@@ -1,0 +1,57 @@
+# E1 — Inclinômetro (MPU6050)
+
+| Campo | Valor |
+|---|---|
+| Prioridade | P0 |
+| Camadas | iot |
+| Depende de | — |
+| Janela | 19/09 |
+| Responsável | Dev |
+| Status | 🟨 leitura básica pronta (roll/pitch a 1 Hz no Serial) |
+
+## Objetivo
+
+Medir de forma estável a inclinação lateral (**roll**) e frontal (**pitch**) da máquina. Todas as
+outras features do dispositivo dependem dessa leitura.
+
+## Escopo
+
+**Inclui**
+- Leitura do acelerômetro a **10 Hz** (a cada 100 ms, com `millis()`).
+- Média móvel das últimas 5 leituras para roll, pitch e `accel_g`.
+- `tiltDeg = max(|roll|, |pitch|)`, a grandeza comparada com o limite (E2).
+- Log no Serial a 1 Hz.
+
+**Não inclui**
+- Fusão com o giroscópio (filtro complementar/Kalman): o acelerômetro basta para a máquina parada ou lenta.
+- Calibração de offset (desnecessária no Wokwi).
+
+## Regras e lógica
+
+```
+ax, ay, az em g (aceleração / 9,80665)
+roll  = atan2(ay, az)                    → graus
+pitch = atan2(-ax, sqrt(ay² + az²))      → graus
+accel_g = sqrt(ax² + ay² + az²)
+```
+
+## Implementação (`iot/src/main.ino`)
+
+- `const unsigned long IMU_INTERVAL_MS = 100;` e `const int FILTER_WINDOW = 5;`
+- `struct ImuReading { float rollDeg, pitchDeg, accelG; }` + um buffer circular para a média.
+- `readImu()` chamada no `loop()` a cada 100 ms. `currentImu()` devolve o valor filtrado.
+- Separar a leitura do DHT (E6) da leitura do IMU: são intervalos diferentes.
+
+## Critérios de aceite
+
+Com os valores da tabela do [iot/README.md](../iot/README.md#simulando-inclinação):
+- [ ] 0°, 10°, 15° e 60° lidos com erro ≤ 0,5°.
+- [ ] Mudar o slider reflete no Serial em ≤ 1 s.
+- [ ] Nenhum `delay()` dentro do `loop()`.
+
+## Tarefas
+
+- [ ] Temporização a 10 Hz + média móvel
+- [ ] `tiltDeg`
+- [ ] Conferir a tabela de ângulos no Wokwi (pode ser feito pelo time, na T6)
+- [ ] Atualizar o `iot/README.md` e o status

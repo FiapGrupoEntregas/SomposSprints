@@ -1,0 +1,33 @@
+# Dados tabulares (não versionar datasets brutos)
+*.csv
+*.tsv
+*.xls
+*.xlsx
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# Segredos e configuração local
+.env
+.streamlit/secrets.toml
+
+# Banco local (I3)
+*.db
+*.sqlite3
+
+# PlatformIO / IoT
+.pio/
+.vscode/.browse.c_cpp.db*
+.vscode/c_cpp_properties.json
+.vscode/launch.json
+.vscode/ipch
+
+# SO e editores
+.DS_Store
+Thumbs.db
+.idea/

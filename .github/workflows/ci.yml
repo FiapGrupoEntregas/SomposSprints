@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api:
+    name: API — lint e testes
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --locked
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run pytest
+
+  front-web:
+    name: Front-web — lint e testes
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: front-web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --locked
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run pytest
+
+  requirements:
+    name: requirements*.txt em sincronia com uv.lock
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: ./scripts/sync-requirements.sh
+      - name: Verificar diferenças
+        run: |
+          if ! git diff --exit-code; then
+            echo "::error::requirements*.txt ou uv.lock desatualizados. Rode scripts/sync-requirements.sh e commite."
+            exit 1
+          fi
+
+  iot:
+    name: IoT — build do firmware
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: iot
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: pio-${{ runner.os }}-${{ hashFiles('iot/platformio.ini') }}
+      - uses: astral-sh/setup-uv@v6
+      - run: uvx platformio run

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 📚 Documentação e práticas do projeto
+    url: https://github.com/FiapGrupoEntregas/SomposSprints/tree/main/docs
+    about: Leia antes de abrir uma issue (fluxo, padrões, definição de pronto).
+  - name: 🧩 Features planejadas
+    url: https://github.com/FiapGrupoEntregas/SomposSprints/tree/main/feature
+    about: As features já planejadas estão detalhadas aqui. Para trabalhar nelas, abra uma Task.

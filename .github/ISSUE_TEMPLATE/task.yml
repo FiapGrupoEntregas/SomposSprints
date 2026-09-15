@@ -1,0 +1,68 @@
+name: "✅ Task"
+description: "Tarefa de até 1 dia ligada a uma feature (código, pesquisa, pitch ou teste)."
+title: "[Task][ID] "
+labels: ["task"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Uma task = uma entrega pequena (até **1 dia**). Os detalhes da feature ficam em `feature/`.
+        Antes de começar, confira a [Definição de Pronto](../blob/main/docs/definicao-de-pronto.md).
+  - type: input
+    id: feature
+    attributes:
+      label: Feature
+      description: ID e arquivo da feature (ou "T" para a trilha do time).
+      placeholder: "W2 — feature/W2-mapa-de-relevo.md"
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Área
+      options:
+        - api
+        - front-web
+        - iot
+        - docs
+        - pesquisa / pitch
+        - infra / .github
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Prioridade
+      options:
+        - "P0 — obrigatório para a demo"
+        - "P1 — importante"
+        - "P2 — se sobrar tempo"
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: O que precisa ser feito
+      description: Descreva a entrega de forma objetiva.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Critérios de aceite
+      description: Como saberemos que está pronto? (copie da feature quando existir)
+      value: |
+        - [ ]
+        - [ ]
+    validations:
+      required: true
+  - type: input
+    id: due
+    attributes:
+      label: Prazo
+      placeholder: "dd/mm"
+  - type: textarea
+    id: notes
+    attributes:
+      label: Dependências e observações
+      placeholder: "Depende de #12 (W1). Usar fixture da Open-Meteo…"

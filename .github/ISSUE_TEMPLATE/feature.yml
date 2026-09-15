@@ -1,0 +1,42 @@
+name: "💡 Nova feature"
+description: "Propor algo NOVO (as features planejadas já estão em feature/)."
+title: "[Feature] "
+labels: ["feature"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Antes de propor, confira se já não existe em [`feature/`](../tree/main/feature).
+        Se aprovada, a feature ganha um arquivo em `feature/` (a partir do `_TEMPLATE.md`).
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problema
+      description: Que dor do produtor, do operador ou da Sompo isto resolve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposta
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Prioridade sugerida
+      options:
+        - "P1 — importante"
+        - "P2 — se sobrar tempo"
+        - "Roadmap — depois da entrega"
+    validations:
+      required: true
+  - type: textarea
+    id: demo
+    attributes:
+      label: Impacto na demo / pitch
+      description: Isto melhora a demo? Em que momento do roteiro aparece?
+  - type: textarea
+    id: effort
+    attributes:
+      label: Esforço estimado e riscos

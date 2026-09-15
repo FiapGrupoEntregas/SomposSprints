@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "author": "Equipe AgriShield",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "board-esp32-devkit-c-v4", "id": "esp", "top": 0, "left": 0, "attrs": {} },
+    { "type": "wokwi-mpu6050", "id": "imu1", "top": -140, "left": 170, "attrs": {} },
+    {
+      "type": "wokwi-dht22",
+      "id": "dht1",
+      "top": -140,
+      "left": -130,
+      "attrs": { "temperature": "28", "humidity": "45" }
+    },
+    { "type": "wokwi-led", "id": "led_green", "top": 60, "left": 250, "attrs": { "color": "green" } },
+    { "type": "wokwi-led", "id": "led_yellow", "top": 60, "left": 300, "attrs": { "color": "yellow" } },
+    { "type": "wokwi-led", "id": "led_red", "top": 60, "left": 350, "attrs": { "color": "red" } },
+    { "type": "wokwi-resistor", "id": "r_green", "top": 150, "left": 200, "attrs": { "value": "220" } },
+    { "type": "wokwi-resistor", "id": "r_yellow", "top": 180, "left": 200, "attrs": { "value": "220" } },
+    { "type": "wokwi-resistor", "id": "r_red", "top": 210, "left": 200, "attrs": { "value": "220" } },
+    { "type": "wokwi-buzzer", "id": "bz1", "top": 240, "left": 300, "attrs": { "volume": "0.2" } }
+  ],
+  "connections": [
+    [ "esp:TX", "$serialMonitor:RX", "", [] ],
+    [ "esp:RX", "$serialMonitor:TX", "", [] ],
+
+    [ "imu1:VCC", "esp:3V3", "red", [] ],
+    [ "imu1:GND", "esp:GND.1", "black", [] ],
+    [ "imu1:SDA", "esp:21", "green", [] ],
+    [ "imu1:SCL", "esp:22", "blue", [] ],
+
+    [ "dht1:VCC", "esp:3V3", "red", [] ],
+    [ "dht1:GND", "esp:GND.1", "black", [] ],
+    [ "dht1:SDA", "esp:4", "orange", [] ],
+
+    [ "esp:25", "r_green:1", "green", [] ],
+    [ "r_green:2", "led_green:A", "green", [] ],
+    [ "led_green:C", "esp:GND.2", "black", [] ],
+
+    [ "esp:26", "r_yellow:1", "gold", [] ],
+    [ "r_yellow:2", "led_yellow:A", "gold", [] ],
+    [ "led_yellow:C", "esp:GND.2", "black", [] ],
+
+    [ "esp:27", "r_red:1", "red", [] ],
+    [ "r_red:2", "led_red:A", "red", [] ],
+    [ "led_red:C", "esp:GND.2", "black", [] ],
+
+    [ "esp:14", "bz1:2", "purple", [] ],
+    [ "bz1:1", "esp:GND.2", "black", [] ]
+  ],
+  "dependencies": {}
+}

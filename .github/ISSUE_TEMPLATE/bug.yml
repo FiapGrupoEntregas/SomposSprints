@@ -1,0 +1,64 @@
+name: "🐛 Bug"
+description: "Algo não funciona como deveria."
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Obrigado por reportar! Saída de console deve ser **colada como texto** (não como imagem).
+        Se o problema for visual (tela, layout), aí sim anexe um print.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Área
+      options:
+        - api
+        - front-web
+        - iot
+        - docs
+        - outro
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: O que aconteceu?
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: O que era esperado?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Passos para reproduzir
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Saída do console / logs
+      render: shell
+  - type: input
+    id: env
+    attributes:
+      label: Ambiente
+      placeholder: "Linux, Python 3.12, uv 0.11, Wokwi web, commit abc123…"
+  - type: dropdown
+    id: demo
+    attributes:
+      label: Afeta a demo?
+      options:
+        - "Sim — bloqueia a demo"
+        - "Sim — mas tem contorno"
+        - "Não"
+    validations:
+      required: true
