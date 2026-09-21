@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Cria/atualiza as labels padrão do projeto no GitHub (ver docs/fluxo-git.md).
+# Cria/atualiza as labels padrão do projeto no GitHub (ver document/fluxo-git.md).
 # Requer o GitHub CLI autenticado: gh auth login
 set -euo pipefail
 

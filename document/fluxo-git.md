@@ -85,4 +85,4 @@ Settings → Branches → Add rule para `main`:
 
 ## Congelamento
 
-O **código congela em 23/09**. Depois disso, só entram PRs `fix:` de bugs que afetem a demo, com aprovação de 2 pessoas.
+O **código congela em 25/09**. Depois disso, só entram PRs `fix:` de bugs que afetem a demo, com aprovação de 2 pessoas.

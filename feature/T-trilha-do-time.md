@@ -5,7 +5,7 @@ Cada entrega vira uma issue do tipo *Task* com a label `pesquisa`.
 
 | ID | Entrega | Prazo | Resultado esperado |
 |---|---|---|---|
-| T1 | Pesquisa de limiares e normas | 17/09 | Tabela com fonte para cada limiar de `docs/regras-de-risco.md` |
+| T1 | Pesquisa de limiares e normas | 17/09 | Tabela com fonte para cada limiar de `document/regras-de-risco.md` |
 | T2 | Casos reais para o replay + validação das fazendas | 18/09 | ≥ 5 casos no formato do `replay_cases.json` + coordenadas conferidas |
 | T3 | Estatísticas e dores do mercado | 19/09 | 1 página com números e fontes + 1–2 entrevistas |
 | T4 | Pitch e modelo de negócio | 22/09 | Deck com ~10 slides |
@@ -17,13 +17,13 @@ Cada entrega vira uma issue do tipo *Task* com a label `pesquisa`.
 
 ## T1 — Pesquisa de limiares e normas
 
-- Para **cada limiar** de [regras-de-risco.md](../docs/regras-de-risco.md), encontre uma fonte que o confirme ou o corrija:
+- Para **cada limiar** de [regras-de-risco.md](../document/regras-de-risco.md), encontre uma fonte que o confirme ou o corrija:
   - inclinação lateral máxima segura para tratores (manuais de fabricantes, NR-31, Fundacentro, ISO 5700/ROPS);
   - efeito do solo molhado na estabilidade e na tração;
   - "regra dos 30" para incêndios (Corpo de Bombeiros, Embrapa);
   - rajadas de vento e pulverização/máquinas altas;
   - raios em áreas abertas e topos de morro.
-- Entrega: uma tabela `limiar | valor atual | valor sugerido | fonte (link)` enviada ao dev ou num PR em `docs/regras-de-risco.md`.
+- Entrega: uma tabela `limiar | valor atual | valor sugerido | fonte (link)` enviada ao dev ou num PR em `document/regras-de-risco.md`.
 
 ## T2 — Casos reais para o replay e validação das fazendas
 
@@ -60,7 +60,7 @@ Estrutura sugerida (~10 slides):
 
 ## T5 — Vídeo de backup e ensaios
 
-- Grave o fluxo completo do [docs/demo.md](../docs/demo.md) em 24/09 (1080p, ≤ 4 min, com narração).
+- Grave o fluxo completo do [document/demo.md](../document/demo.md) em 24/09 (1080p, ≤ 4 min, com narração).
 - Faça 3 ensaios cronometrados, com um responsável por cada parte da fala.
 
 ## T6 — Validar o circuito no Wokwi

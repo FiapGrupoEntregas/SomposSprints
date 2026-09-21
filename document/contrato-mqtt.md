@@ -26,14 +26,16 @@ Este é o contrato entre `iot/` e `api/`. **Mudou aqui, muda o firmware e a API 
 | `status` | ESP32 → API | 1 | **sim** | ao conectar (`online`) e via LWT (`offline`) |
 
 - O PubSubClient **só publica com QoS 0**. Para não perder eventos críticos, o ESP32 envia cada evento **3 vezes** (com 500 ms de intervalo) usando o **mesmo `event_id`**, e a API **deduplica** por `event_id`.
-- A API assina `{prefix}/devices/+/telemetry`, `.../+/events` e `.../+/status`.
+- A API assina `{prefix}/devices/+/telemetry`, `.../+/events` e `.../+/status`, **com QoS 1**. A entrega efetiva é o menor QoS entre publicação e assinatura, então a telemetria do ESP32 (QoS 0) continua QoS 0; quem ganha entrega confirmada é o `status`. *(Fixado na I2.)*
 
 ## Regras gerais
 
 - JSON em `snake_case`. Os campos levam a unidade no nome: `_deg`, `_g`, `_c`, `_pct`, `_kmh`, `_mm`.
 - `ts` = epoch em segundos (UTC), vindo do NTP (`pool.ntp.org`). Se o NTP ainda não sincronizou, o ESP32 manda `ts: 0` e a API usa a hora em que recebeu.
 - Quem recebe **ignora campos desconhecidos** e **mantém o valor atual** quando um campo não vem.
+- A API **descarta** a mensagem cujo `device_id` do payload não seja o do tópico. O broker é público: confiar no tópico e sobrescrever o payload faria uma leitura de qualquer pessoa entrar no histórico de um equipamento real. *(Fixado na I2.)*
 - Adicionar um campo é compatível. Renomear ou remover exige atualizar este documento e os dois lados.
+- **Float inteiro chega sem casa decimal.** O ArduinoJson serializa `10.0` como `10` e `28.0` como `28`. Quem valida na API precisa aceitar `int` onde o campo é `float` (o Pydantic faz essa coerção sozinho; só não use `StrictFloat`). Vale para `tilt_limit_deg`, `temp_c`, `humidity_pct`, `accel_g`, `roll_deg` e `pitch_deg`. Exemplo real em `api/tests/fixtures/telemetry_sample.json`.
 
 ## Payloads
 
@@ -59,7 +61,7 @@ Este é o contrato entre `iot/` e `api/`. **Mudou aqui, muda o firmware e a API 
 |---|---|---|
 | `seq` | int | contador que reinicia no boot. Serve para detectar perda de mensagens |
 | `temp_c`, `humidity_pct` | float \| null | `null` se o DHT22 falhar (NaN) |
-| `fire_conditions` | int 0–3 \| ausente | **opcional**. Quantas condições da regra dos 30 estão ativas (E6) |
+| `fire_conditions` | int 0–3 \| ausente | **opcional**. Quantas condições da regra dos 30 estão ativas (E6): `temp_c > 30`, `humidity_pct < 30`, `wind_max_kmh > 30`. Com dado parcial é um **piso**, não a contagem exata: o ESP32 conta só o que conhece, então `1` com `temp_c: null` quer dizer "pelo menos 1 das 3". O campo é **omitido** quando nenhum dos três valores é conhecido (sem DHT e sem `wind_max_kmh`), porque `0` afirmaria "nenhuma condição ativa" e o caso é "não sei" |
 | `alert_level` | enum | `green` · `yellow` · `red` · `rollover` |
 
 ### `events` (E2, E5, E8)
@@ -89,7 +91,13 @@ Este é o contrato entre `iot/` e `api/`. **Mudou aqui, muda o firmware e a API 
 | `limit_applied` | o ESP32 aplicou um limite novo recebido em `config` (E3) | não |
 
 `event_id` = `{device_id}-{ts ou millis}-{contador}`. `t_s` é o tempo relativo ao evento, em segundos (≤ 0).
-Com 30 linhas o payload fica em ~1 KB, e por isso o firmware usa `mqtt.setBufferSize(2048)`.
+As linhas vão da mais antiga (`-29`) para a do próprio evento (`0`), uma por segundo. Medido com a
+ArduinoJson do firmware: **725 bytes** num `rollover` típico (738 num `incident_report`, que tem o `type` mais longo) e **1028 bytes** no pior caso com 30 linhas
+— por isso o `mqtt.setBufferSize(2048)`.
+
+Dentro do `context`, `roll_deg` e `pitch_deg` são a leitura filtrada (a mesma base da telemetria) e
+`accel_g` é o **pico daquele segundo**: um impacto dura poucos décimos de segundo e uma média o
+esconderia justamente onde ele importa para o laudo do sinistro.
 
 ### `config` (W4 → E3), retained
 
@@ -110,10 +118,10 @@ Com 30 linhas o payload fica em ~1 KB, e por isso o firmware usa `mqtt.setBuffer
 | `tilt_limit_deg` | **obrigatório**. Novo limite (E2, E3) |
 | `warn_ratio` | fração do limite que dispara 🟡 (padrão 0,8) |
 | `soil_state` | `dry` · `moist` · `saturated`. Exibido no display (E7) |
-| `risk_level` | pior nível da fazenda hoje. Exibido no display (E7) |
+| `risk_level` | pior nível da fazenda hoje. Guardado no ESP32, mas **não cabe no layout atual do display** (E7) |
 | `wind_max_kmh` | vento máximo previsto para hoje. Usado na regra dos 30 local (E6), já que não há anemômetro |
 | `valid_until` | epoch. Depois disso o ESP32 continua usando o último limite, mas avisa no Serial |
-| `reason` | texto curto, **sem acento** (a fonte padrão do OLED não tem acentos) |
+| `reason` | texto curto. Hoje só aparece no Serial do dispositivo; mantenha **sem acento** caso volte para a tela (a fonte padrão do OLED não tem acentos) |
 
 ### `status`, retained
 

@@ -4,10 +4,10 @@
 |---|---|
 | Prioridade | P0 |
 | Camadas | iot |
-| Depende de | [contrato MQTT](../docs/contrato-mqtt.md#config-w4--e3-retained) |
+| Depende de | [contrato MQTT](../document/contrato-mqtt.md#config-w4--e3-retained) |
 | Janela | 19/09 |
 | Responsável | Dev |
-| Status | 🟨 conexão, LWT e assinatura do `config` prontos |
+| Status | 🟦 Em revisão (implementado; falta o GIF da simulação) |
 
 ## Objetivo
 
@@ -44,15 +44,15 @@ Fazer o dispositivo **aplicar o limite calculado pela API**: o limite de 15° vi
 
 ## Critérios de aceite
 
-- [ ] `mosquitto_pub -r … -m '{"tilt_limit_deg":10}'` → o limite muda em ≤ 2 s e o nível do E2 é recalculado na hora.
-- [ ] Reiniciar a simulação → o limite 10° volta ao conectar (retained).
-- [ ] `{"tilt_limit_deg": 90}` e JSON quebrado são ignorados sem travar.
-- [ ] O evento `limit_applied` aparece no broker.
+- [ ] `mosquitto_pub -r … -m '{"tilt_limit_deg":10}'` → o limite muda em ≤ 2 s e o nível do E2 é recalculado na hora (conferir no Wokwi, T6). Implementado: `applyConfig` marca `alertRecheckPending` e o `loop()` chama `updateAlert` na volta seguinte, < 10 ms.
+- [ ] Reiniciar a simulação → o limite 10° volta ao conectar (conferir no Wokwi, T6). Implementado: `connectMqtt` assina `topicConfig` com QoS 1 logo após o `connect`, e o `config` é retained.
+- [x] `{"tilt_limit_deg": 90}` e JSON quebrado são ignorados sem travar (`isValidTiltLimit` + guarda de `DeserializationError` em `applyConfig`; verificado no host com o ArduinoJson do `libdeps`).
+- [ ] O evento `limit_applied` aparece no broker (conferir no Wokwi, T6). Implementado em `queueLimitApplied`, 3 envios pela fila.
 
 ## Tarefas
 
-- [ ] `applyConfig` + validação
-- [ ] Preferences
-- [ ] Evento `limit_applied`
-- [ ] Teste com `mosquitto_pub` e com o botão do W4
-- [ ] Atualizar o status
+- [x] `applyConfig` + validação (`isValidTiltLimit`, `isValidWarnRatio`, `static_assert` das faixas)
+- [x] Preferences (`loadConfigFromNvs` / `persistConfig`, namespace `agrishield`)
+- [x] Evento `limit_applied`
+- [ ] Teste com `mosquitto_pub` e com o botão do W4 (o botão depende do W4)
+- [x] Atualizar o status

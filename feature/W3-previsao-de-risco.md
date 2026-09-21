@@ -7,7 +7,7 @@
 | Depende de | I1, W2 |
 | Janela | 17/09 |
 | Responsável | Dev |
-| Status | ⬜ A fazer |
+| Status | ✅ API + aba Previsão de risco no front |
 
 ## Objetivo
 
@@ -21,9 +21,9 @@ encosta muda de risco conforme a chuva**.
 ## Escopo
 
 **Inclui**
-- Estado do solo, limite do dia, e os perigos `rollover` e `bogging`: [regras-de-risco §3, §4, §5.1, §5.2, §6](../docs/regras-de-risco.md#3-estado-do-solo).
+- Estado do solo, limite do dia, e os perigos `rollover` e `bogging`: [regras-de-risco §3, §4, §5.1, §5.2, §6](../document/regras-de-risco.md#3-estado-do-solo).
 - Motor extensível: cada perigo é uma função registrada numa lista. O W7 só adiciona funções.
-- **Cenários simulados** ([regras-de-risco §10](../docs/regras-de-risco.md#10-cenários-simulados-demo)): setembro é época seca em MG e a previsão real pode não ter chuva nenhuma. O cenário `heavy_rain` garante a demo, **sempre sinalizado na tela**.
+- **Cenários simulados** ([regras-de-risco §10](../document/regras-de-risco.md#10-cenários-simulados-demo)): setembro é época seca em MG e a previsão real pode não ter chuva nenhuma. O cenário `heavy_rain` garante a demo, **sempre sinalizado na tela**.
 
 **Não inclui**
 - Raio, vento e incêndio (W7), recomendações em texto (W6).
@@ -57,11 +57,11 @@ encosta muda de risco conforme a chuva**.
 
 ## Critérios de aceite
 
-- [ ] Num dia com `rain_72h ≥ 30 mm` em Carmo de Minas, as células com inclinação ≥ 10° ficam 🔴.
-- [ ] O pior nível de cada card bate com o pior nível das células daquele dia.
-- [ ] Cada célula 🟡 ou 🔴 tem pelo menos um motivo com números.
-- [ ] Com `scenario=heavy_rain`, o dia +2 aparece como solo encharcado e o campo `scenario` vem preenchido. O front mostra o aviso.
-- [ ] Resposta em < 3 s sem cache.
+- [x] Num dia com `rain_72h ≥ 30 mm` em Carmo de Minas, as células com inclinação ≥ 10° ficam 🔴.
+- [x] O pior nível de cada card bate com o pior nível das células daquele dia.
+- [x] Cada célula 🟡 ou 🔴 tem pelo menos um motivo com números.
+- [x] Com `scenario=heavy_rain`, o dia +2 aparece como solo encharcado e o campo `scenario` vem preenchido (**API ✅**). O front liga o cenário por um toggle e mostra a faixa "⚠️ Cenário simulado — não é a previsão real" sempre que a resposta traz `scenario` (**front ✅**).
+- [x] Resposta em < 3 s sem cache (0,9 s medido em Carmo de Minas, ~101 KB).
 
 ## Testes
 
@@ -83,8 +83,8 @@ encosta muda de risco conforme a chuva**.
 
 ## Tarefas
 
-- [ ] Regras puras + testes de borda
-- [ ] Cenários + testes
-- [ ] `assess_farm` + rota
-- [ ] Aba Risco no front (faixa, mapa, gráfico, aviso de cenário)
-- [ ] Atualizar `docs/arquitetura.md`, os READMEs e o status
+- [x] Regras puras + testes de borda
+- [x] Cenários + testes
+- [x] `assess_farm` + rota
+- [x] Aba Risco no front (faixa, mapa, gráfico, aviso de cenário)
+- [x] Atualizar `document/arquitetura.md`, os READMEs e o status

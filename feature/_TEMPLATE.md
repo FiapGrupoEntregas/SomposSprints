@@ -27,7 +27,7 @@ _Que problema isto resolve e por que importa para a demo e para a Sompo._
 
 ## Regras e lógica
 
-_Fórmulas, limiares e casos de borda. Se for regra de risco, a fonte da verdade é `docs/regras-de-risco.md`: aponte a seção em vez de repetir._
+_Fórmulas, limiares e casos de borda. Se for regra de risco, a fonte da verdade é `document/regras-de-risco.md`: aponte a seção em vez de repetir._
 
 ## Implementação
 

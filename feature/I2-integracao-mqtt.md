@@ -4,10 +4,10 @@
 |---|---|
 | Prioridade | P0 |
 | Camadas | api |
-| Depende de | [contrato MQTT](../docs/contrato-mqtt.md) |
+| Depende de | [contrato MQTT](../document/contrato-mqtt.md) |
 | Janela | 18/09 |
 | Responsável | Dev |
-| Status | ⬜ A fazer |
+| Status | ✅ Pronto |
 
 ## Objetivo
 
@@ -46,12 +46,12 @@ Conectar a API ao broker MQTT para **receber** telemetria, eventos e status dos 
 
 ## Critérios de aceite
 
-- [ ] A API sobe mesmo com o broker fora do ar (loga um aviso e tenta de novo em segundo plano).
-- [ ] `mosquitto_pub` com uma telemetria válida → a mensagem é registrada (log em nível INFO; depois do I3, fica gravada).
-- [ ] Payload inválido (JSON quebrado ou campo obrigatório faltando) → log WARNING, nada gravado, a ponte continua funcionando.
-- [ ] O mesmo `event_id` recebido 3 vezes → processado **uma vez**.
-- [ ] `publish_config` → um novo assinante recebe o último config na hora (retained).
-- [ ] Os testes rodam sem broker (`mqtt_enabled=False` e testes de `handle_message`).
+- [x] A API sobe mesmo com o broker fora do ar (loga um aviso e tenta de novo em segundo plano).
+- [x] `mosquitto_pub` com uma telemetria válida → a mensagem é registrada (log em nível INFO; depois do I3, fica gravada).
+- [x] Payload inválido (JSON quebrado ou campo obrigatório faltando) → log WARNING, nada gravado, a ponte continua funcionando.
+- [x] O mesmo `event_id` recebido 3 vezes → processado **uma vez**.
+- [x] `publish_config` → um novo assinante recebe o último config na hora (retained).
+- [x] Os testes rodam sem broker (`mqtt_enabled=False` e testes de `handle_message`).
 
 ## Testes
 
@@ -62,14 +62,14 @@ Conectar a API ao broker MQTT para **receber** telemetria, eventos e status dos 
 | Risco | Plano B |
 |---|---|
 | HiveMQ instável | Trocar `AGRISHIELD_MQTT_HOST` para `test.mosquitto.org` (e `MQTT_HOST` no firmware) |
-| A thread do paho travar o shutdown | `loop_stop()` + `disconnect()` no lifespan, com timeout |
+| A thread do paho travar o shutdown | `disconnect()` + `loop_stop()` no lifespan. O `loop_stop()` do paho v2 não tem timeout: ele espera a thread sair, e a espera da reconexão acorda de segundo em segundo para checar o encerramento. Medido: ~1 s com o broker fora, 0 s conectado |
 | Outro time publicando no mesmo tópico | O prefixo é próprio e a validação é estrita |
 
 ## Tarefas
 
-- [ ] `uv add paho-mqtt` + sincronizar os requirements
-- [ ] Schemas MQTT
-- [ ] `handle_message` + testes
-- [ ] `MqttBridge` + lifespan
-- [ ] Teste manual com `mosquitto_pub` e `mosquitto_sub`
-- [ ] Atualizar `.env.example`, `api/README.md` e `README.md`
+- [x] `uv add paho-mqtt` + sincronizar os requirements
+- [x] Schemas MQTT
+- [x] `handle_message` + testes
+- [x] `MqttBridge` + lifespan
+- [x] Teste manual contra o `broker.hivemq.com` (com o `paho`, porque o `mosquitto-clients` não está instalado na máquina)
+- [x] Atualizar `.env.example`, `api/README.md` e `README.md`

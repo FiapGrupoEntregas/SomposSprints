@@ -50,3 +50,23 @@ Para uma decisão nova, adicione ao fim da lista, com o próximo número.
 - **Contexto:** precisamos guardar telemetria e eventos por alguns dias, e só para a demo.
 - **Decisão:** usar SQLite (arquivo local) na API.
 - **Consequências:** nada para instalar. Se a API for publicada num serviço gratuito, os dados podem ser apagados em cada novo deploy, o que é aceitável para a demo.
+
+### ADR-010: Modelo preditivo treinado com dados reais do PSR (revisa a ADR-006)
+- **Contexto:** a ADR-006 dizia que não havia base de sinistros para treinar. Em 19/09/2026 encontramos os dados abertos do **PSR/SISSER** (Mapa, CC-BY): uma linha por apólice, de 2006 a 2025, com coordenada da propriedade, cultura, vigência, valor indenizado e evento preponderante.
+- **Decisão:** treinar um modelo simples com esses dados (D1, D2, D3) e usá-lo **ao lado** das regras, não no lugar delas (W13).
+- **Consequências:** atende à exigência de modelo e métricas do enunciado, com dado **real**. O rótulo é de seguro agrícola, não de máquinas: essa limitação precisa ser declarada em toda apresentação.
+
+### ADR-011: Nenhum dado pessoal no repositório (LGPD)
+- **Contexto:** o CSV do PSR traz nome do segurado e documento parcial.
+- **Decisão:** descartar essas colunas na leitura (D1), nunca gravá-las no banco nem versioná-las. O `data/raw/` fica fora do Git e só uma amostra anonimizada é versionada.
+- **Consequências:** conformidade com a LGPD e com o requisito de proteção de dados, sem perder nada de útil para o modelo.
+
+### ADR-012: Simulador de dispositivo para os testes de integração
+- **Contexto:** o Wokwi não roda em CI nem em teste automatizado, mas o enunciado cobra validação da integração.
+- **Decisão:** criar `scripts/simulate_device.py` (I6), que publica no mesmo contrato MQTT, e testes `tests/e2e/` fora da CI padrão. O Wokwi continua sendo o dispositivo da demo.
+- **Consequências:** dá para provar confiabilidade da coleta e consistência dos dados com evidências reproduzíveis.
+
+### ADR-013: Controle de acesso por chave de API, sem login de usuário
+- **Contexto:** o enunciado pede controle de acesso, mas login com perfis não cabe no prazo.
+- **Decisão:** chave de API (`X-API-Key`) nos endpoints de escrita e de publicação de limite, leitura aberta na demo, e trilha de auditoria de todas as decisões (I5).
+- **Consequências:** atende ao requisito com pouco esforço. Autenticação de usuário fica declarada no roadmap.

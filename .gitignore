@@ -3,6 +3,9 @@
 *.tsv
 *.xls
 *.xlsx
+# Exceções: a amostra anonimizada (D1) e os fixtures de teste são pequenos e vão para o Git
+!data/sample/*.csv
+!api/tests/fixtures/*.csv
 
 # Python
 __pycache__/
@@ -16,6 +19,12 @@ __pycache__/
 .env
 .streamlit/secrets.toml
 
+# Dados brutos baixados por script (ver document/dados-e-modelo.md)
+data/raw/
+
+# Parcial da geração do dataset (D2): reconstruível, e só serve para retomar
+data/.dataset_parcial.jsonl
+
 # Banco local (I3)
 *.db
 *.sqlite3
@@ -26,6 +35,9 @@ __pycache__/
 .vscode/c_cpp_properties.json
 .vscode/launch.json
 .vscode/ipch
+
+# Claude Code (configuração pessoal; agentes e skills em .claude/ são versionados)
+.claude/settings.local.json
 
 # SO e editores
 .DS_Store

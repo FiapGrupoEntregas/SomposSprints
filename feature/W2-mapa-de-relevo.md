@@ -7,7 +7,7 @@
 | Depende de | I1, W1 |
 | Janela | 16/09 |
 | Responsável | Dev |
-| Status | ⬜ A fazer |
+| Status | ✅ API + aba Relevo no front |
 
 ## Objetivo
 
@@ -21,7 +21,7 @@ encosta, topo exposto, plano). É o diferencial que a Sompo apontou: ninguém es
 ## Escopo
 
 **Inclui**
-- Grade 10×10, com inclinação, orientação (aspect) e classe por célula: [regras-de-risco §1](../docs/regras-de-risco.md#1-relevo-w2).
+- Grade 10×10, com inclinação, orientação (aspect) e classe por célula: [regras-de-risco §1](../document/regras-de-risco.md#1-relevo-w2).
 - Estatísticas: elevação mín/máx, amplitude, inclinação máx/média, % de células por faixa.
 - Polígono de cada célula já calculado pela API (o front só desenha).
 - Cache de 24 h por fazenda.
@@ -32,7 +32,7 @@ encosta, topo exposto, plano). É o diferencial que a Sompo apontou: ninguém es
 
 ## Regras e lógica
 
-Seguir exatamente [regras-de-risco §1](../docs/regras-de-risco.md#1-relevo-w2). Pontos de atenção:
+Seguir exatamente [regras-de-risco §1](../document/regras-de-risco.md#1-relevo-w2). Pontos de atenção:
 - As linhas vão de **norte → sul**, então `dz_dnorte = -gradient_eixo0`.
 - `dx` depende de `cos(lat)`.
 - Fazenda com amplitude < 5 m → tudo `flat`.
@@ -50,6 +50,10 @@ Seguir exatamente [regras-de-risco §1](../docs/regras-de-risco.md#1-relevo-w2).
   - `get_terrain(farm) -> Terrain` (usa o I1 e fica em cache)
 - `app/schemas/terrain.py`: `TerrainCell(row, col, lat, lon, polygon: list[[lon, lat]], elevation_m, slope_deg, aspect_deg, aspect_label, terrain_class)` e `TerrainResponse(farm_id, grid_size, cell_size_m, stats, cells)`.
 - `GET /api/v1/farms/{farm_id}/terrain`
+- **Herdado do I1:** registrar em `app/main.py` o tratador global que converte
+  `WeatherUnavailableError` (de `app/clients/open_meteo.py`) em
+  **503 "Serviço de clima indisponível"** — `app.add_exception_handler(WeatherUnavailableError, …)`.
+  É a primeira feature com rota que usa a Open-Meteo, então a pendência vence aqui.
 
 ### Front-web (`front-web/`)
 - Página **Mapa de risco**, aba **Relevo**:
@@ -60,16 +64,17 @@ Seguir exatamente [regras-de-risco §1](../docs/regras-de-risco.md#1-relevo-w2).
 
 ## Critérios de aceite
 
-- [ ] A fazenda de Carmo de Minas mostra relevo variado (inclinação máx ≥ 8°). A fazenda plana tem quase tudo `flat`.
-- [ ] Teste sintético: um plano que sobe 10 m a cada 100 m para leste → `slope ≈ 5,71°` e `aspect ≈ 270° (O)`.
-- [ ] Teste sintético: um plano que sobe para o **norte** → `aspect ≈ 180° (S)` (valida a inversão de sinal).
-- [ ] Um vale sintético → células do fundo `lowland` e das bordas altas `exposed`.
-- [ ] Resposta em < 3 s sem cache e < 200 ms com cache.
+- [x] A fazenda de Carmo de Minas mostra relevo variado (inclinação máx ≥ 8°). A fazenda plana tem quase tudo `flat`.
+- [x] Teste sintético: um plano que sobe 10 m a cada 100 m para leste → `slope ≈ 5,71°` e `aspect ≈ 270° (O)`.
+- [x] Teste sintético: um plano que sobe para o **norte** → `aspect ≈ 180° (S)` (valida a inversão de sinal).
+- [x] Um vale sintético → células do fundo `lowland` e das bordas altas `exposed`.
+- [x] Resposta em < 3 s sem cache e < 200 ms com cache.
+- [x] Com a Open-Meteo fora do ar e sem cache, a rota responde **503 "Serviço de clima indisponível"** (tratador global de `WeatherUnavailableError`, pendência do I1).
 
 ## Testes
 
 - `tests/test_terrain.py`: os três sintéticos acima, `aspect_label` nas fronteiras (22,5°, 67,5°…) e a regra do `flat`.
-- `tests/test_terrain_route.py`: rota com a Open-Meteo mockada.
+- `tests/test_terrain_route.py`: rota com a Open-Meteo mockada (sucesso, 404 de fazenda inexistente e 503 quando o cliente levanta `WeatherUnavailableError`).
 
 ## Riscos e plano B
 
@@ -80,8 +85,9 @@ Seguir exatamente [regras-de-risco §1](../docs/regras-de-risco.md#1-relevo-w2).
 
 ## Tarefas
 
-- [ ] `uv add numpy` + sincronizar os requirements
-- [ ] Funções puras + testes sintéticos
-- [ ] `get_terrain` com cache + rota
-- [ ] Aba Relevo no front
-- [ ] Atualizar `docs/arquitetura.md` (✅ no endpoint) e os READMEs
+- [x] `uv add numpy` + sincronizar os requirements
+- [x] Funções puras + testes sintéticos
+- [x] `get_terrain` com cache + rota
+- [x] `exception_handler` global de `WeatherUnavailableError` → 503 (pendência do I1)
+- [x] Aba Relevo no front
+- [x] Atualizar `document/arquitetura.md` (✅ no endpoint) e os READMEs

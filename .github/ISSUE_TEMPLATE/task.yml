@@ -7,7 +7,7 @@ body:
     attributes:
       value: |
         Uma task = uma entrega pequena (até **1 dia**). Os detalhes da feature ficam em `feature/`.
-        Antes de começar, confira a [Definição de Pronto](../blob/main/docs/definicao-de-pronto.md).
+        Antes de começar, confira a [Definição de Pronto](../blob/main/document/definicao-de-pronto.md).
   - type: input
     id: feature
     attributes:
@@ -24,6 +24,8 @@ body:
         - api
         - front-web
         - iot
+        - dados/modelo
+        - qa
         - docs
         - pesquisa / pitch
         - infra / .github

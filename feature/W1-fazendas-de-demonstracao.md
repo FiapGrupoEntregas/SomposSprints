@@ -7,7 +7,7 @@
 | Depende de | — |
 | Janela | 15/09 |
 | Responsável | Dev (dados validados pelo time, T2) |
-| Status | ⬜ A fazer |
+| Status | ✅ API + seletor no front |
 
 ## Objetivo
 
@@ -22,7 +22,7 @@ Ter fazendas reais pré-cadastradas, com relevos contrastantes, para a demo não
 
 **Inclui**
 - 3 fazendas num arquivo JSON versionado:
-  1. **Café em Carmo de Minas (MG)**: morros, colheita mecanizada. Centro `-22.12, -45.13`, bbox ±0,005° (elevação verificada entre 900 e 1000 m) → **fazenda principal da demo**.
+  1. **Café em Carmo de Minas (MG)**: morros, colheita mecanizada. Centro `-22.12, -45.13`, bbox ±0,005° (elevação medida na bbox: 893–1000 m) → **fazenda principal da demo**.
   2. **Grãos numa área plana (ex.: Sorriso, MT)**: contraste. Deve sair quase toda 🟢 e classe `flat`.
   3. **Uva ou café em outra encosta** (ex.: Serra Gaúcha, RS), para mostrar um segundo relevo.
 - Cada fazenda tem pelo menos 1 equipamento (`tractor-01` na fazenda de café).
@@ -58,14 +58,14 @@ Ter fazendas reais pré-cadastradas, com relevos contrastantes, para a demo não
 
 ### Front-web (`front-web/`)
 - `services/api_client.py`: `list_farms()` e `get_farm(id)` (cache de 10 min).
-- `components/farm_picker.py`: `farm_picker()`, um `st.sidebar.selectbox` que guarda em `st.session_state["farm_id"]` e devolve a fazenda.
-- Na página **Mapa de risco**: um mini-mapa (`st.map`) com o centro da fazenda e os dados básicos.
+- `components/farm_picker.py`: `farm_picker()`, um `st.sidebar.selectbox` que guarda em `st.session_state["farm_id"]` (chave própria, não a do widget, para sobreviver à troca de página) e devolve a fazenda escolhida.
+- O seletor aparece na barra lateral da página **Início** e da página **Mapa de risco**, que mostra nome, município, cultura e limite de inclinação de referência da fazenda (o mapa em si vem da W2).
 
 ## Critérios de aceite
 
-- [ ] `GET /farms` lista 3 fazendas. `GET /farms/xyz` → 404 com a mensagem em português.
-- [ ] `farms.json` com um campo faltando → a API **não sobe** e mostra qual campo está errado.
-- [ ] Trocar de página no front mantém a fazenda selecionada.
+- [x] `GET /farms` lista 3 fazendas. `GET /farms/xyz` → 404 com a mensagem em português.
+- [x] `farms.json` com um campo faltando → a API **não sobe** e mostra qual campo está errado.
+- [x] Trocar de página no front mantém a fazenda selecionada (`st.session_state["farm_id"]`, coberto por `tests/test_pages.py`).
 - [ ] O time (T2) conferiu no Google Maps (satélite) que as bboxes caem em áreas agrícolas reais.
 
 ## Testes
@@ -76,7 +76,7 @@ Ter fazendas reais pré-cadastradas, com relevos contrastantes, para a demo não
 ## Tarefas
 
 - [ ] Coordenadas das 3 fazendas (com o T2)
-- [ ] `farms.json` + schemas + service
-- [ ] Rotas + testes
-- [ ] Seletor no front
-- [ ] Marcar os endpoints como ✅ em `docs/arquitetura.md` e `api/README.md`
+- [x] `farms.json` + schemas + service
+- [x] Rotas + testes
+- [x] Seletor no front
+- [x] Marcar os endpoints como ✅ em `document/arquitetura.md` e `api/README.md`

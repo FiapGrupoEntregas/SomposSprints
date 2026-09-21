@@ -7,7 +7,7 @@
 | Depende de | — |
 | Janela | 15/09 |
 | Responsável | Dev |
-| Status | ⬜ A fazer |
+| Status | ✅ Pronto |
 
 ## Objetivo
 
@@ -25,7 +25,7 @@ de W2, W3, W4, W6, W7, W8 e W9.
 - Elevação para até 100 pontos por chamada.
 - Previsão horária com `past_days=3` e `forecast_days=7` (fuso `America/Sao_Paulo`).
 - Dados históricos para o replay: Historical Forecast API (datas ≥ 2022-01-01) e Archive API (antes disso).
-- Agregação diária conforme [regras-de-risco §2](../docs/regras-de-risco.md#2-clima-agregação-diária-i1).
+- Agregação diária conforme [regras-de-risco §2](../document/regras-de-risco.md#2-clima-agregação-diária-i1).
 - Cache em memória com TTL e *stale-if-error*.
 
 **Não inclui**
@@ -34,7 +34,7 @@ de W2, W3, W4, W6, W7, W8 e W9.
 
 ## Regras e lógica
 
-- Variáveis horárias: `temperature_2m, relative_humidity_2m, precipitation, weather_code, wind_speed_10m, wind_gusts_10m, cape, soil_moisture_3_to_9cm` (verificadas em 15/09/2026).
+- Variáveis horárias: `temperature_2m, relative_humidity_2m, precipitation, weather_code, wind_speed_10m, wind_gusts_10m, cape, soil_moisture_3_to_9cm` (verificadas em 19/09/2026).
 - Na Archive API, `cape` vem indefinido e a umidade do solo se chama `soil_moisture_0_to_7cm`. Trate os dois como opcionais (`None`).
 - TTL do cache: elevação **24 h**, previsão **1 h**, histórico **7 dias**. A chave do cache é a URL mais os parâmetros.
 - *Stale-if-error:* se a chamada falhar e existir um valor vencido no cache, devolva esse valor e registre um aviso no log. Isso protege a demo.
@@ -56,12 +56,12 @@ de W2, W3, W4, W6, W7, W8 e W9.
 
 ## Critérios de aceite
 
-- [ ] 100 coordenadas → 1 requisição → 100 elevações. 101 coordenadas → `ValueError`.
-- [ ] A previsão devolve 10 dias agregados (3 passados + 7 futuros) com todos os campos de §2.
-- [ ] `rain_72h_mm` do dia d = chuva de d−2 + d−1 + d (teste com números conhecidos).
-- [ ] Uma segunda chamada idêntica dentro do TTL **não** acessa a rede (teste contando requisições no `MockTransport`).
-- [ ] Com a rede falhando e cache vencido, a função devolve o valor vencido. Sem cache, lança `WeatherUnavailableError`.
-- [ ] Os testes rodam **offline**, com fixtures JSON em `tests/fixtures/open_meteo_*.json`.
+- [x] 100 coordenadas → 1 requisição → 100 elevações. 101 coordenadas → `ValueError`.
+- [x] A previsão devolve 10 dias agregados (3 passados + 7 futuros) com todos os campos de §2.
+- [x] `rain_72h_mm` do dia d = chuva de d−2 + d−1 + d (teste com números conhecidos).
+- [x] Uma segunda chamada idêntica dentro do TTL **não** acessa a rede (teste contando requisições no `MockTransport`).
+- [x] Com a rede falhando e cache vencido, a função devolve o valor vencido. Sem cache, lança `WeatherUnavailableError`.
+- [x] Os testes rodam **offline**, com fixtures JSON em `tests/fixtures/open_meteo_*.json`.
 
 ## Testes
 
@@ -77,8 +77,36 @@ de W2, W3, W4, W6, W7, W8 e W9.
 
 ## Tarefas
 
-- [ ] Salvar respostas reais como fixtures (`curl … > tests/fixtures/…json`)
-- [ ] `TTLCache` + testes
-- [ ] `open_meteo.py` + testes com `MockTransport`
-- [ ] `aggregate_daily` + testes
-- [ ] Atualizar o `README.md` (se algo mudou em "Como executar") e o status aqui
+- [x] Salvar respostas reais como fixtures (`curl … > tests/fixtures/…json`)
+- [x] `TTLCache` + testes
+- [x] `open_meteo.py` + testes com `MockTransport`
+- [x] `aggregate_daily` + testes
+- [x] Atualizar o `README.md` (se algo mudou em "Como executar") e o status aqui
+
+## Notas da implementação (19/09/2026)
+
+- As três funções de busca viraram métodos de `OpenMeteoClient` (`app/clients/open_meteo.py`), com
+  os mesmos nomes e parâmetros da especificação. A classe recebe `Settings`, o `httpx.Client` e o
+  `TTLCache` por injeção; `get_open_meteo_client` é a dependência do FastAPI que devolve uma
+  instância única (um cache só para o processo).
+- `HourlyWeather.soil_moisture` normaliza os dois nomes da API: `soil_moisture_3_to_9cm` (previsão e
+  Historical Forecast) e `soil_moisture_0_to_7cm` (Archive). Na Archive, `cape` vira lista de `None`.
+- `rain_72h_mm` é somado **por data** (`d`, `d−1`, `d−2`), não pelas três últimas posições da
+  lista: uma lacuna na série conta 0 mm no dia que falta, em vez de puxar um dia mais antigo. Os
+  dias saem ordenados por data, sem depender da ordem de inserção.
+- Uma resposta **200 com conteúdo inválido** é removida do cache (`TTLCache.invalidate`), para não
+  envenenar o cache por 1 h/7 dias nem reaparecer via *stale-if-error*. Isso vale também para o
+  caso mais provável, a série horária **desalinhada**: `_parse_hourly` converte a `ValidationError`
+  do pydantic em `WeatherUnavailableError`, para o tratador global do W2 devolver 503 (e não 500).
+- As fixtures em `tests/fixtures/open_meteo_*.json` são respostas reais capturadas em 19/09/2026
+  (Carmo de Minas, MG). Os testes rodam sem rede — verificado com `unshare -rn uv run pytest`.
+- **Pendência entregue ao W2:** a conversão de `WeatherUnavailableError` em
+  **503 "Serviço de clima indisponível"** ainda **não** existe — nenhum endpoint novo entrou nesta
+  feature. O **W2** deve registrar o tratador global em `app/main.py`:
+
+  ```python
+  app.add_exception_handler(WeatherUnavailableError, weather_unavailable_handler)
+  # -> JSONResponse(status_code=503, content={"detail": "Serviço de clima indisponível"})
+  ```
+
+  Assim toda rota que usar o cliente ganha o 503 sem repetir `try/except`.

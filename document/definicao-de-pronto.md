@@ -20,7 +20,7 @@
 ### Documentação
 - [ ] **`README.md` atualizado** (estrutura de pastas, como executar, funcionalidades e histórico de lançamentos), ou uma justificativa no PR explicando por que não precisou
 - [ ] O status da feature foi atualizado em `feature/README.md`
-- [ ] Se mudou regra, contrato ou endpoint: `docs/regras-de-risco.md`, `docs/contrato-mqtt.md` ou `docs/arquitetura.md` atualizados
+- [ ] Se mudou regra, contrato ou endpoint: `document/regras-de-risco.md`, `document/contrato-mqtt.md` ou `document/arquitetura.md` atualizados
 
 ### Revisão
 - [ ] PR aprovado por 1 pessoa, que **testou seguindo o "Como testar"**

@@ -7,7 +7,7 @@
 | Depende de | W3 |
 | Janela | 22/09 |
 | Responsável | Dev |
-| Status | ⬜ A fazer |
+| Status | ✅ API + filtro e ícones no front |
 
 ## Objetivo
 
@@ -17,8 +17,8 @@ raios, cristas expostas pegam mais vento e o fogo sobe a encosta mais rápido.
 ## Escopo
 
 **Inclui**
-- `lightning`, `wind` e `fire`: [regras-de-risco §5.3–5.5](../docs/regras-de-risco.md#53-raio-lightning-w7-p1).
-- Cenários extras: `storm` e `heatwave` ([§10](../docs/regras-de-risco.md#10-cenários-simulados-demo)).
+- `lightning`, `wind` e `fire`: [regras-de-risco §5.3–5.5](../document/regras-de-risco.md#53-raio-lightning-w7-p1).
+- Cenários extras: `storm` e `heatwave` ([§10](../document/regras-de-risco.md#10-cenários-simulados-demo)).
 - Filtro por tipo de perigo no front.
 
 **Não inclui**
@@ -36,10 +36,17 @@ raios, cristas expostas pegam mais vento e o fogo sobe a encosta mais rápido.
 
 ## Critérios de aceite
 
-- [ ] Tempestade no dia → células `exposed` 🔴 e as demais pelo menos 🟡.
-- [ ] Rajada de 50 km/h → só as `exposed` ficam 🟡. Rajada de 60 km/h → `exposed` 🔴 e as demais 🟡.
-- [ ] Regra dos 30 com as 3 condições → 🔴 em tudo. Com 2 condições → 🟡, e 🔴 onde a inclinação é ≥ 15°.
-- [ ] Os cenários `storm` e `heatwave` acionam os perigos esperados.
+- [x] Tempestade no dia → células `exposed` 🔴 e as demais pelo menos 🟡.
+- [x] Rajada de 50 km/h → só as `exposed` ficam 🟡. Rajada de 60 km/h → `exposed` 🔴 e as demais 🟡.
+- [x] Regra dos 30 com as 3 condições → 🔴 em tudo. Com 2 condições → 🟡, e 🔴 onde a inclinação é ≥ 15°.
+- [x] Os cenários `storm` e `heatwave` acionam os perigos esperados.
+
+### Convenção fixada na W7: o motivo da tempestade não tem número
+
+O critério da W3 dizia "cada célula 🟡 ou 🔴 tem pelo menos um motivo **com números**". O raio por
+`weather_code` (§5.3) é a única exceção: ou o dia tem código de tempestade, ou não tem — não há
+número a citar. O motivo sai como *"Tempestade prevista em topo exposto: risco de raio."* e o
+teste da rota abre essa exceção **explicitamente**, em vez de afrouxar a regra para todos.
 
 ## Testes
 
@@ -47,7 +54,7 @@ raios, cristas expostas pegam mais vento e o fogo sobe a encosta mais rápido.
 
 ## Tarefas
 
-- [ ] 3 funções de perigo + testes
-- [ ] 2 cenários + testes
-- [ ] Filtro e ícones no front
-- [ ] Atualizar os READMEs e o status
+- [x] 3 funções de perigo + testes (bordas de cada limiar novo)
+- [x] 2 cenários + testes
+- [x] Filtro e ícones no front
+- [x] Atualizar os READMEs, `document/arquitetura.md` e o status

@@ -7,7 +7,7 @@
 | Depende de | W3 (e W7, se existir) |
 | Janela | 22/09 |
 | Responsável | Dev |
-| Status | ⬜ A fazer |
+| Status | ✅ API + card no front |
 
 ## Objetivo
 
@@ -20,7 +20,7 @@ Traduzir o mapa em **ação**: "o que fazer hoje e amanhã", em frases simples, 
 ## Escopo
 
 **Inclui**
-- Janelas seguras hora a hora para **hoje e amanhã**: [regras-de-risco §7](../docs/regras-de-risco.md#7-janela-segura-de-operação-w6).
+- Janelas seguras hora a hora para **hoje e amanhã**: [regras-de-risco §7](../document/regras-de-risco.md#7-janela-segura-de-operação-w6).
 - Frases geradas por **templates** (sem IA), a partir dos perigos do dia:
 
 | Situação | Frase |
@@ -48,10 +48,12 @@ Traduzir o mapa em **ação**: "o que fazer hoje e amanhã", em frases simples, 
 
 ## Critérios de aceite
 
-- [ ] Horas com chuva ≥ 0,5 mm, rajada ≥ 45 km/h ou tempestade nunca aparecem numa janela.
-- [ ] Janelas com menos de 2 h são descartadas. Janelas só entre 06h e 18h.
-- [ ] Um dia sem nenhuma célula 🟡 ou 🔴 → só a frase "Sem restrições…".
-- [ ] A direção citada bate com a maioria das células 🔴.
+- [x] Horas com chuva ≥ 0,5 mm, rajada ≥ 45 km/h ou tempestade nunca aparecem numa janela. **Hora com indicador ausente também não entra**: numa orientação que o operador vai seguir, falta de dado não pode virar permissão *(convenção fixada na W6)*.
+- [x] Janelas com menos de 2 h são descartadas. Janelas só entre 06h e 18h — intervalo **meio aberto**, como nos cenários (§10): a última hora cheia é a das 17h, que termina às 18h.
+- [x] Um dia sem nenhuma célula 🟡 ou 🔴 → só a frase "Sem restrições…".
+- [x] A direção citada bate com a maioria das células 🔴 (moda do `aspect_label`, empate resolvido pela ordem do relevo, que é determinística).
+- [x] **Janela segura ≠ área liberada**: todo dia com célula 🔴 termina com a frase "As janelas valem só para as áreas liberadas: as áreas em vermelho do mapa seguem proibidas mesmo dentro delas."
+- [x] A frase do atolamento cita **as duas causas** (baixada encharcada **e** chuva do dia) quando as duas estão presentes — pedido da revisão da W3.
 
 ## Testes
 
@@ -59,7 +61,8 @@ Traduzir o mapa em **ação**: "o que fazer hoje e amanhã", em frases simples, 
 
 ## Tarefas
 
-- [ ] `safe_windows` + testes
-- [ ] Templates + testes
-- [ ] Rota + card no front
-- [ ] Atualizar os READMEs e o status
+- [x] `safe_windows` + testes
+- [x] Templates + testes
+- [x] Rota (`GET /farms/{id}/recommendations?days=2&scenario=`), com a decisão registrada na trilha (I5)
+- [x] Card no front
+- [x] Atualizar os READMEs, `document/arquitetura.md` e o status

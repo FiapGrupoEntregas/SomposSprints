@@ -30,13 +30,13 @@
 
 <!-- Prints, GIF da simulação no Wokwi, saída do terminal (como texto). -->
 
-## ✅ Checklist — [Definição de Pronto](../docs/definicao-de-pronto.md)
+## ✅ Checklist — [Definição de Pronto](../document/definicao-de-pronto.md)
 
 - [ ] Critérios de aceite da feature atendidos
 - [ ] `ruff check` / `ruff format --check` / `pytest` passando (api, front-web) · `pio run` compilando (iot)
 - [ ] Testes adicionados ou atualizados
 - [ ] Mudou dependências? `scripts/sync-requirements.sh` executado (uv.lock + requirements*.txt)
-- [ ] Mudou regra, contrato ou endpoint? `docs/regras-de-risco.md` · `docs/contrato-mqtt.md` · `docs/arquitetura.md` atualizados
+- [ ] Mudou regra, contrato ou endpoint? `document/regras-de-risco.md` · `document/contrato-mqtt.md` · `document/arquitetura.md` atualizados
 - [ ] **`README.md` atualizado** (e o README do subprojeto), ou justificativa abaixo
 - [ ] Status da feature atualizado em `feature/README.md`
 - [ ] Sem segredos commitados; variáveis novas no `.env.example`
