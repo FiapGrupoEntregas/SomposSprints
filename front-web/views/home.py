@@ -1,8 +1,7 @@
-import httpx
 import streamlit as st
 
-from config import API_URL
-from services.api_client import get_api
+from components.farm_picker import farm_picker
+from services.api_client import ApiError, get_api
 
 st.title("🚜 Sompo AgriShield")
 st.subheader("Prevenção de acidentes com máquinas agrícolas cruzando relevo e clima")
@@ -27,9 +26,15 @@ st.divider()
 
 try:
     health = get_api().health()
-    st.success(f"API online — versão {health['version']} ({health['environment']})")
-except httpx.HTTPError:
-    st.error(
-        f"API indisponível em {API_URL}. Suba a API com `uv run fastapi dev app/main.py` "
-        "na pasta api/."
+    version = health.get("version", "desconhecida")
+    environment = health.get("environment", "desconhecido")
+    st.success(f"API online — versão {version} ({environment})")
+except ApiError as error:
+    st.error(str(error))
+
+farm = farm_picker()
+if farm is not None:
+    st.info(
+        f"Fazenda selecionada: **{farm['name']}** ({farm['municipality']}/{farm['state']}). "
+        "A escolha vale para todas as páginas."
     )

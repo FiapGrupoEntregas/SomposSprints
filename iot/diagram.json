@@ -18,7 +18,21 @@
     { "type": "wokwi-resistor", "id": "r_green", "top": 150, "left": 200, "attrs": { "value": "220" } },
     { "type": "wokwi-resistor", "id": "r_yellow", "top": 180, "left": 200, "attrs": { "value": "220" } },
     { "type": "wokwi-resistor", "id": "r_red", "top": 210, "left": 200, "attrs": { "value": "220" } },
-    { "type": "wokwi-buzzer", "id": "bz1", "top": 240, "left": 300, "attrs": { "volume": "0.2" } }
+    { "type": "wokwi-buzzer", "id": "bz1", "top": 240, "left": 300, "attrs": { "volume": "0.2" } },
+    {
+      "type": "board-ssd1306",
+      "id": "oled1",
+      "top": -160,
+      "left": 330,
+      "attrs": { "i2cAddress": "0x3c" }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn1",
+      "top": 330,
+      "left": 250,
+      "attrs": { "color": "red", "label": "ocorrencia" }
+    }
   ],
   "connections": [
     [ "esp:TX", "$serialMonitor:RX", "", [] ],
@@ -46,7 +60,15 @@
     [ "led_red:C", "esp:GND.2", "black", [] ],
 
     [ "esp:14", "bz1:2", "purple", [] ],
-    [ "bz1:1", "esp:GND.2", "black", [] ]
+    [ "bz1:1", "esp:GND.2", "black", [] ],
+
+    [ "oled1:VCC", "esp:3V3", "red", [] ],
+    [ "oled1:GND", "esp:GND.1", "black", [] ],
+    [ "oled1:SDA", "esp:21", "green", [] ],
+    [ "oled1:SCL", "esp:22", "blue", [] ],
+
+    [ "btn1:1.l", "esp:33", "purple", [] ],
+    [ "btn1:2.l", "esp:GND.1", "black", [] ]
   ],
   "dependencies": {}
 }

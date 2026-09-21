@@ -1,0 +1,101 @@
+{
+  "gerado_em": "2026-09-20T14:11:29+00:00",
+  "linhas": 1184,
+  "amostra_pedida": 2500,
+  "seed": 42,
+  "fontes": {
+    "apolices": "PSR/SISSER — Ministério da Agricultura, CC-BY (D1, tabela policy)",
+    "relevo": "Open-Meteo Elevation — Copernicus DEM GLO-90 (~90 m)",
+    "clima_ate_2021": "Open-Meteo Archive (ERA5)",
+    "clima_2022_em_diante": "Open-Meteo Historical Forecast"
+  },
+  "features": [
+    "proposal_id",
+    "state",
+    "municipality",
+    "geocode_ibge",
+    "crop",
+    "crop_group",
+    "area_ha",
+    "lat",
+    "lon",
+    "coordinate_source",
+    "policy_year",
+    "start_date",
+    "end_date",
+    "start_month",
+    "coverage_days",
+    "slope_mean_deg",
+    "slope_max_deg",
+    "elevation_mean_m",
+    "elevation_range_m",
+    "aspect_label",
+    "pct_lowland",
+    "pct_exposed",
+    "rain_total_mm",
+    "rain_max_day_mm",
+    "days_rain72h_ge30",
+    "days_thunderstorm",
+    "gust_max_kmh",
+    "temp_max_c",
+    "rh_min_pct",
+    "dry_spell_max_days",
+    "weather_days"
+  ],
+  "rotulos": {
+    "target_claim": {
+      "positivos": 199,
+      "taxa": 0.1681
+    },
+    "target_rain_claim": {
+      "positivos": 49,
+      "taxa": 0.0414
+    }
+  },
+  "composicao": {
+    "por_ano": {
+      "2021": 223,
+      "2020": 217,
+      "2024": 155,
+      "2023": 130,
+      "2022": 124,
+      "2019": 106,
+      "2016": 82,
+      "2017": 80,
+      "2018": 67
+    },
+    "por_uf": {
+      "PR": 435,
+      "RS": 241,
+      "SP": 158,
+      "SC": 96,
+      "MG": 94,
+      "MS": 65,
+      "GO": 54,
+      "MT": 19,
+      "ES": 9,
+      "TO": 7,
+      "MA": 2,
+      "BA": 2,
+      "PI": 1,
+      "PA": 1
+    },
+    "coordinate_source": {
+      "dms": 1058,
+      "decimal": 126
+    },
+    "culturas_distintas": 28
+  },
+  "execucao_atual": {
+    "policies_sampled": 0,
+    "rows_built": 0,
+    "rows_discarded": 0,
+    "discarded": {},
+    "elevation_calls": 0,
+    "weather_calls": 0,
+    "weather_groups": 0,
+    "api_calls": 0,
+    "by_state": {},
+    "by_year": {}
+  }
+}

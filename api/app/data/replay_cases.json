@@ -1,0 +1,62 @@
+[
+  {
+    "id": "patos-de-minas-incendio-colheitadeira-2023-06-20",
+    "title": "Colheitadeira pega fogo durante colheita de sorgo",
+    "date": "2023-06-20",
+    "location": { "lat": -18.63407, "lon": -46.57236 },
+    "location_precision": "municipio",
+    "municipality": "Patos de Minas",
+    "state": "MG",
+    "machine": "colheitadeira",
+    "description": "Colheitadeira pegou fogo durante a colheita de sorgo na Estrada da Serrinha, localidade de Baixadinha. A reportagem observa que incêndios assim são mais frequentes na época seca e fria do ano.",
+    "source_url": "https://patoshoje.com.br/noticias/colheitadeira-pega-fogo-durante-colheita-de-sorgo-em-lavoura-de-patos-de-minas-80009.html"
+  },
+  {
+    "id": "irai-de-minas-capotamento-trator-2024-02-09",
+    "title": "Trator capota durante plantio e mata operador",
+    "date": "2024-02-09",
+    "location": { "lat": -19.01158, "lon": -47.44333 },
+    "location_precision": "municipio",
+    "municipality": "Iraí de Minas",
+    "state": "MG",
+    "machine": "trator",
+    "description": "Trator de três toneladas capotou por volta das 11h30 durante plantio mecanizado na comunidade São José do Barreiro; a cabine foi esmagada e o operador de 26 anos morreu no local. A notícia não menciona chuva nem declive.",
+    "source_url": "https://www.em.com.br/gerais/2024/02/6801041-trator-de-tres-toneladas-capota-e-esmaga-jovem-que-fazia-plantio-no-alto-paranaiba.html"
+  },
+  {
+    "id": "castro-tombamento-trator-2025-07-04",
+    "title": "Trator tomba ao tentar desatolar outro em pastagem encharcada",
+    "date": "2025-07-04",
+    "location": { "lat": -24.75167, "lon": -49.88444 },
+    "location_precision": "municipio",
+    "municipality": "Castro",
+    "state": "PR",
+    "machine": "trator",
+    "description": "Ao tentar desatolar um trator Valmet, um New Holland deslizou pela lateral e tombou três vezes na região do Palmital, perto do distrito do Socavão. A reportagem diz que a área de pastagem estava bastante afetada pelas chuvas recentes. Ninguém se feriu.",
+    "source_url": "https://p1news.com.br/seguranca/trator-tomba-durante-tentativa-de-resgate-na-zona-rural-de-castro-e-acidente-chama-atencao/"
+  },
+  {
+    "id": "jabora-capotamento-trator-2026-07-18",
+    "title": "Trator capota em ribanceira numa descida e mata trabalhador",
+    "date": "2026-07-18",
+    "location": { "lat": -27.14687, "lon": -51.74389 },
+    "location_precision": "municipio",
+    "municipality": "Jaborá",
+    "state": "SC",
+    "machine": "trator",
+    "description": "Trabalhador rural de 71 anos perdeu o controle da direção num trecho de descida na comunidade Linha Águas Belas, às margens da SC-355; o trator capotou numa ribanceira e ele ficou preso sob a máquina. A notícia não menciona chuva.",
+    "source_url": "https://ndmais.com.br/seguranca/trabalhador-rural-de-71-anos-morre-apos-trator-capotar-em-ribanceira-as-margens-da-sc-355-em-sc/"
+  },
+  {
+    "id": "imbituva-raio-lavoura-2026-08-31",
+    "title": "Raio mata trabalhador em plantação de fumo durante tempestade",
+    "date": "2026-08-31",
+    "location": { "lat": -25.25694, "lon": -50.68667 },
+    "location_precision": "municipio",
+    "municipality": "Imbituva",
+    "state": "PR",
+    "machine": "nenhuma (trabalho a pé na lavoura)",
+    "description": "Trabalhador de 51 anos morreu atingido por raio numa plantação de fumo na localidade de Arroio Grande, durante tempestade. O sistema estadual registrou 37.501 raios no Paraná naquele dia, 122 deles em Imbituva.",
+    "source_url": "https://dcmais.com.br/campos-gerais/trabalhador-morre-apos-ser-atingido-por-raio-em-plantacao-de-imbituva/"
+  }
+]

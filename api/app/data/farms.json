@@ -1,0 +1,56 @@
+[
+  {
+    "id": "cafe-carmo-de-minas",
+    "name": "Sítio Café da Serra (exemplo)",
+    "municipality": "Carmo de Minas",
+    "state": "MG",
+    "crop": "café",
+    "center": { "lat": -22.12, "lon": -45.13 },
+    "bbox": { "north": -22.115, "south": -22.125, "west": -45.135, "east": -45.125 },
+    "reference_tilt_limit_deg": 15.0,
+    "devices": [
+      {
+        "device_id": "tractor-01",
+        "name": "Trator cafeeiro 01",
+        "type": "tractor",
+        "base_tilt_limit_deg": 15.0
+      }
+    ]
+  },
+  {
+    "id": "graos-sorriso",
+    "name": "Fazenda Planalto de Grãos (exemplo)",
+    "municipality": "Sorriso",
+    "state": "MT",
+    "crop": "soja",
+    "center": { "lat": -12.6, "lon": -55.95 },
+    "bbox": { "north": -12.595, "south": -12.605, "west": -55.955, "east": -55.945 },
+    "reference_tilt_limit_deg": 15.0,
+    "devices": [
+      {
+        "device_id": "harvester-01",
+        "name": "Colheitadeira de grãos 01",
+        "type": "harvester",
+        "base_tilt_limit_deg": 15.0
+      }
+    ]
+  },
+  {
+    "id": "uva-serra-gaucha",
+    "name": "Vinhedo Vale da Encosta (exemplo)",
+    "municipality": "Bento Gonçalves",
+    "state": "RS",
+    "crop": "uva",
+    "center": { "lat": -29.19, "lon": -51.57 },
+    "bbox": { "north": -29.185, "south": -29.195, "west": -51.575, "east": -51.565 },
+    "reference_tilt_limit_deg": 15.0,
+    "devices": [
+      {
+        "device_id": "tractor-02",
+        "name": "Trator vinhateiro 02",
+        "type": "tractor",
+        "base_tilt_limit_deg": 15.0
+      }
+    ]
+  }
+]

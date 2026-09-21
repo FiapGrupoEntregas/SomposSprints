@@ -7,7 +7,14 @@ requires-python = ">=3.11"
 dependencies = [
     "fastapi[standard]>=0.115",
     "httpx>=0.27",
+    "joblib>=1.6.0",
+    "numpy>=2.4.6",
+    "paho-mqtt>=2.1.0",
+    "pandas>=3.0.6",
+    "pyarrow>=25.0.1",
     "pydantic-settings>=2.4",
+    "scikit-learn>=1.9.1",
+    "sqlmodel>=0.0.42",
 ]
 
 [dependency-groups]
@@ -19,6 +26,12 @@ dev = [
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
+# Os testes de ponta a ponta (I6) usam rede, broker e um processo da API: ficam **fora** da
+# execução padrão e da CI. Rode-os de propósito com `uv run pytest -m e2e`.
+addopts = "-m 'not e2e'"
+markers = [
+    "e2e: teste de ponta a ponta com broker MQTT e API de verdade (I6). Não roda na CI.",
+]
 
 [tool.ruff]
 line-length = 100

@@ -7,7 +7,7 @@
 | Depende de | — |
 | Janela | 19/09 |
 | Responsável | Dev |
-| Status | 🟨 leitura básica pronta (roll/pitch a 1 Hz no Serial) |
+| Status | 🟦 Em revisão (10 Hz + média móvel implementados; falta conferir os ângulos no Wokwi) |
 
 ## Objetivo
 
@@ -39,19 +39,20 @@ accel_g = sqrt(ax² + ay² + az²)
 
 - `const unsigned long IMU_INTERVAL_MS = 100;` e `const int FILTER_WINDOW = 5;`
 - `struct ImuReading { float rollDeg, pitchDeg, accelG; }` + um buffer circular para a média.
-- `readImu()` chamada no `loop()` a cada 100 ms. `currentImu()` devolve o valor filtrado.
+- `readImu()` chamada no `loop()` a cada 100 ms; `averageImu(imuSamples, imuSampleCount)`
+  (função pura) devolve o valor filtrado e `tiltFromImu(reading)` devolve o `tiltDeg`.
 - Separar a leitura do DHT (E6) da leitura do IMU: são intervalos diferentes.
 
 ## Critérios de aceite
 
 Com os valores da tabela do [iot/README.md](../iot/README.md#simulando-inclinação):
-- [ ] 0°, 10°, 15° e 60° lidos com erro ≤ 0,5°.
-- [ ] Mudar o slider reflete no Serial em ≤ 1 s.
-- [ ] Nenhum `delay()` dentro do `loop()`.
+- [ ] 0°, 10°, 15° e 60° lidos com erro ≤ 0,5° (conferir no Wokwi, T6).
+- [x] Mudar o slider reflete no Serial em ≤ 1 s (amostra a 100 ms, média de 5 → 500 ms; log a 1 Hz).
+- [x] Nenhum `delay()` dentro do `loop()`.
 
 ## Tarefas
 
-- [ ] Temporização a 10 Hz + média móvel
-- [ ] `tiltDeg`
+- [x] Temporização a 10 Hz + média móvel
+- [x] `tiltDeg` (`tiltFromImu`)
 - [ ] Conferir a tabela de ângulos no Wokwi (pode ser feito pelo time, na T6)
-- [ ] Atualizar o `iot/README.md` e o status
+- [x] Atualizar o `iot/README.md` e o status

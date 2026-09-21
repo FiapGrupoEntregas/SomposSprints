@@ -7,7 +7,7 @@
 | Depende de | E1 |
 | Janela | 19/09 |
 | Responsável | Dev |
-| Status | ⬜ A fazer |
+| Status | 🟦 Em revisão (implementado; falta o GIF da simulação) |
 
 ## Objetivo
 
@@ -39,23 +39,28 @@ Buzzer: 🟢 desligado · 🟡 um bipe curto ao entrar · 🔴 intermitente a 2 
 ## Implementação (`iot/src/main.ino`)
 
 - `enum AlertLevel { LEVEL_GREEN, LEVEL_YELLOW, LEVEL_RED, LEVEL_ROLLOVER };`
-- `AlertLevel computeLevel(float tiltDeg, AlertLevel current)`: função pura, aplicando a histerese.
+- `AlertLevel computeLevel(float tiltDeg, AlertLevel current, float limitDeg, float ratio)`:
+  função pura, aplicando a histerese. O limite e o `warn_ratio` entram por parâmetro (e não
+  por variável global) justamente para a função continuar pura e testável fora do firmware.
+- As histereses se encadeiam: saindo do 🔴, o nível cai para 🟡 enquanto `tilt ≥ w·L − H`, e
+  só vai direto para 🟢 abaixo disso (com `L = 10`: 8,9° → 🟡, 6,9° → 🟢).
 - `applyOutputs(AlertLevel level)`: LEDs e buzzer, temporizados com `millis()`.
-- Mudança de nível → log `[alert] green → red (tilt 10.4° / limite 10.0°)` e **telemetria imediata** (E4).
+- Mudança de nível → log `[alert] green → red (tilt 10.4° / limite 10.0°)` e **telemetria
+  imediata**, que fica como `TODO(E4)` no código (a telemetria só existe a partir do E4).
 - Entrada no 🔴 → evento `tilt_alert` (enviado 3 vezes, conforme o contrato).
 
 ## Critérios de aceite
 
 Com `L = 10°` e `w = 0,8`:
-- [ ] 7,9° → 🟢 · 8,0° → 🟡 · 10,0° → 🔴
-- [ ] Voltando do 🔴: 9,5° continua 🔴 · 8,9° → 🟡
-- [ ] Voltando do 🟡: 7,5° continua 🟡 · 6,9° → 🟢
-- [ ] O buzzer toca intermitente só no 🔴, e o loop continua respondendo (MQTT ativo).
-- [ ] Um `tilt_alert` por entrada no 🔴 (e não um a cada leitura).
+- [x] 7,9° → 🟢 · 8,0° → 🟡 · 10,0° → 🔴 (`computeLevel`)
+- [x] Voltando do 🔴: 9,5° continua 🔴 · 8,9° → 🟡
+- [x] Voltando do 🟡: 7,5° continua 🟡 · 6,9° → 🟢
+- [x] O buzzer toca intermitente só no 🔴, e o loop continua respondendo (`applyOutputs` com `millis()`, sem `delay()`).
+- [x] Um `tilt_alert` por entrada no 🔴 (disparado na transição, em `updateAlert`; e no `setup()` quando a máquina liga já acima do limite, que é uma entrada sem transição).
 
 ## Tarefas
 
-- [ ] `computeLevel` com histerese
-- [ ] `applyOutputs` sem bloquear
-- [ ] Evento `tilt_alert`
+- [x] `computeLevel` com histerese
+- [x] `applyOutputs` sem bloquear
+- [x] Evento `tilt_alert` (fila com 3 envios, sem bloquear)
 - [ ] GIF da simulação no PR + atualizar o status

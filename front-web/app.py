@@ -13,6 +13,7 @@ pages = [
     st.Page("views/risk_map.py", title="Mapa de risco", icon="🗺️"),
     st.Page("views/equipment.py", title="Equipamento ao vivo", icon="📡"),
     st.Page("views/underwriting.py", title="Subscrição", icon="📋"),
+    st.Page("views/reports.py", title="Relatórios", icon="📊"),
     st.Page("views/replay.py", title="Replay de acidentes", icon="⏪"),
 ]
 

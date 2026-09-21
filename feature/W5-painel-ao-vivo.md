@@ -7,7 +7,7 @@
 | Depende de | I2, I3, E4 |
 | Janela | 20/09 |
 | Responsável | Dev |
-| Status | ⬜ A fazer |
+| Status | 🟨 API + painel no front prontos; falta a conferência com o Wokwi |
 
 ## Objetivo
 
@@ -49,10 +49,10 @@ eventos. É o que prova, na demo, que o dispositivo e a nuvem conversam.
 
 ## Critérios de aceite
 
-- [ ] Mexer no slider do MPU6050 → o nível muda no painel em **≤ 3 s** (o evento é imediato) e o gráfico em **≤ 7 s** (telemetria a cada 5 s).
-- [ ] Parar a simulação → o painel mostra Offline em **≤ 30 s**.
-- [ ] Com a API sem dados do equipamento, a página mostra "Aguardando o equipamento conectar…" em vez de um erro.
-- [ ] A atualização automática não pisca nem reseta os seletores da página.
+- [ ] Mexer no slider do MPU6050 → o nível muda no painel em **≤ 3 s** e o gráfico em **≤ 7 s**. *(API ✅; tela ✅ com `@st.fragment(run_every="2s")` — falta medir com o Wokwi rodando.)*
+- [x] Parar a simulação → **Offline em ≤ 30 s**: a API usa 20 s de silêncio, além do LWT.
+- [x] Sem dados do equipamento, a API responde `state: "offline"` com `last_seen_at: null` e listas vazias — nunca um erro. (O texto "Aguardando o equipamento conectar…" é do front.)
+- [ ] A atualização automática não pisca nem reseta os seletores da página. *(Front ✅ por construção: só o bloco ao vivo está dentro do fragmento, e os seletores ficam fora dele — falta a conferência visual.)*
 
 ## Testes
 
@@ -61,7 +61,8 @@ eventos. É o que prova, na demo, que o dispositivo e a nuvem conversam.
 
 ## Tarefas
 
-- [ ] Rotas de status, telemetria e eventos + testes
-- [ ] Fragmento ao vivo no front
-- [ ] Banner de capotamento (depois do E5)
-- [ ] Teste ponta a ponta com o Wokwi + atualizar os READMEs e o status
+- [x] Rotas de status, telemetria e eventos + testes
+- [x] Fragmento ao vivo no front
+- [x] Banner de capotamento — `st.error` fixo no topo enquanto o evento tem menos de 5 min, com o gráfico do `context` de 30 s
+- [ ] Teste ponta a ponta com o Wokwi
+- [x] Atualizar os READMEs, `document/arquitetura.md` e o status

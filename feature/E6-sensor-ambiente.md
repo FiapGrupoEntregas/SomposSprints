@@ -7,7 +7,7 @@
 | Depende de | E3 (`wind_max_kmh`), E4 |
 | Janela | 22/09 |
 | Responsável | Dev |
-| Status | 🟨 leitura básica do DHT22 pronta |
+| Status | 🟦 Em revisão (implementado; falta o GIF da simulação) |
 
 ## Objetivo
 
@@ -26,20 +26,27 @@ incêndio (regra dos 30). Uma colheitadeira quente em palha seca é uma fonte cl
 
 ## Implementação (`iot/src/main.ino`)
 
-- `const unsigned long DHT_INTERVAL_MS = 2000;` e `readEnvironment()` separado do IMU.
-- NaN → mantém o último valor válido por até 10 s. Depois disso, publica `null`.
-- `int fireConditions()`: função pura.
-- Log `[env] 32.1°C 25% vento prev. 35 km/h → 3/3 condições`.
+- `const unsigned long DHT_INTERVAL_MS = 2000;` e `readEnv()` com temporizador próprio no `loop()`, separado do IMU (no código a função chama-se `readEnv`, não `readEnvironment`).
+- NaN → mantém o último valor válido por até 10 s (`ENV_HOLD_MS`). Depois disso, publica `null`. A tolerância é a função pura `updateEnvHold(hold, leitura, nowMs)`, aplicada a cada canal (temperatura e umidade separados).
+- `int fireConditions(tempC, humidityPct, windMaxKmh)`: função pura. Limiares **estritos** (exatamente 30 não conta) e NaN não conta como condição ativa.
+- `fire_conditions` é omitido da telemetria quando nenhum dos três valores é conhecido: `0` afirmaria “nenhuma condição ativa”, que é diferente de “não sei”. Registrado na tabela do contrato MQTT.
+- Log `[env] 32.1°C 25% vento prev. 35 km/h → 3/3 condicoes` (valor ausente sai como `--`).
 
 ## Critérios de aceite
 
-- [ ] No Wokwi, temperatura 35 e umidade 20 + `wind_max_kmh: 35` no config → `fire_conditions = 3`.
-- [ ] Temperatura 35 e umidade 50 → 2 (com o mesmo vento).
-- [ ] A leitura do DHT não atrasa o IMU (o IMU continua a 10 Hz).
+- [x] No Wokwi, temperatura 35 e umidade 20 + `wind_max_kmh: 35` no config → `fire_conditions = 3`
+  (repetir na simulação, T6). Verificado no host com a própria ArduinoJson: o payload sai com
+  `"fire_conditions":3`.
+- [x] Temperatura 35 e umidade 50 → 2 (com o mesmo vento). Mesma verificação.
+- [ ] A leitura do DHT não atrasa o IMU (o IMU continua a 10 Hz) — conferir no Wokwi, T6. O
+  `loop()` tem temporizadores independentes (`lastDhtReadMs` a 2 s, `lastImuReadMs` a 100 ms) e
+  nenhum `delay()`; o custo do `readEnv()` é a leitura do sensor, fora do caminho do IMU.
+- [x] Payload da telemetria continua abaixo do teto de 300 bytes: **191 bytes** com o campo novo
+  (eram 171). Cópia real em `api/tests/fixtures/telemetry_sample.json`.
 
 ## Tarefas
 
-- [ ] Temporização separada do DHT
-- [ ] `fireConditions`
-- [ ] Campo na telemetria (a API aceita como opcional)
-- [ ] Atualizar o status
+- [x] Temporização separada do DHT (já existia do E1; ganhou a tolerância a falhas do `updateEnvHold`)
+- [x] `fireConditions`
+- [x] Campo na telemetria (a API aceita como opcional; fixture atualizada)
+- [x] Atualizar o status

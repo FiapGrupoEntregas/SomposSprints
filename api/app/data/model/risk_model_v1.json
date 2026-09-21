@@ -1,0 +1,279 @@
+{
+  "version": "v1",
+  "trained_at": "2026-09-20T15:13:28+00:00",
+  "dataset": {
+    "path": "/home/ntl/workspace/SomposSprints/data/dataset_treino.parquet",
+    "rows": 1184
+  },
+  "split": {
+    "train": "<= 2021",
+    "validation": [
+      2022,
+      2023
+    ],
+    "test": 2024,
+    "sizes": {
+      "train": 775,
+      "validation": 254,
+      "test": 155
+    }
+  },
+  "features": {
+    "numeric": [
+      "slope_mean_deg",
+      "slope_max_deg",
+      "elevation_mean_m",
+      "elevation_range_m",
+      "pct_lowland",
+      "pct_exposed",
+      "rain_total_mm",
+      "rain_max_day_mm",
+      "days_rain72h_ge30",
+      "days_thunderstorm",
+      "gust_max_kmh",
+      "temp_max_c",
+      "rh_min_pct",
+      "dry_spell_max_days",
+      "weather_days",
+      "area_ha",
+      "coverage_days",
+      "start_month"
+    ],
+    "categorical": [
+      "crop_group",
+      "state",
+      "aspect_label",
+      "coordinate_source"
+    ]
+  },
+  "excluded_from_model": [
+    "proposal_id",
+    "policy_year",
+    "lat",
+    "lon",
+    "municipality",
+    "geocode_ibge",
+    "crop",
+    "start_date",
+    "end_date",
+    "target_claim",
+    "target_rain_claim"
+  ],
+  "target": "target_claim",
+  "chosen": "regressao_logistica",
+  "threshold": 0.1418,
+  "split_sizes": {
+    "train": 775,
+    "validation": 254,
+    "test": 155
+  },
+  "validation": {
+    "baseline_regras": {
+      "n": 254,
+      "positives": 29,
+      "positive_rate": 0.1142,
+      "roc_auc": 0.5208,
+      "pr_auc": 0.1177,
+      "threshold": 0.0829,
+      "recall": 0.8966,
+      "precision": 0.13,
+      "true_negatives": 51,
+      "false_positives": 174,
+      "false_negatives": 3,
+      "true_positives": 26
+    },
+    "regressao_logistica": {
+      "n": 254,
+      "positives": 29,
+      "positive_rate": 0.1142,
+      "roc_auc": 0.5445,
+      "pr_auc": 0.1236,
+      "threshold": 0.1418,
+      "recall": 1.0,
+      "precision": 0.1239,
+      "true_negatives": 20,
+      "false_positives": 205,
+      "false_negatives": 0,
+      "true_positives": 29
+    },
+    "floresta_aleatoria": {
+      "n": 254,
+      "positives": 29,
+      "positive_rate": 0.1142,
+      "roc_auc": 0.5451,
+      "pr_auc": 0.1258,
+      "threshold": 0.3521,
+      "recall": 0.9655,
+      "precision": 0.1284,
+      "true_negatives": 35,
+      "false_positives": 190,
+      "false_negatives": 1,
+      "true_positives": 28
+    }
+  },
+  "test": {
+    "baseline_regras": {
+      "n": 155,
+      "positives": 8,
+      "positive_rate": 0.0516,
+      "roc_auc": 0.6216,
+      "pr_auc": 0.0915,
+      "threshold": 0.0829,
+      "recall": 0.875,
+      "precision": 0.0526,
+      "true_negatives": 21,
+      "false_positives": 126,
+      "false_negatives": 1,
+      "true_positives": 7
+    },
+    "regressao_logistica": {
+      "n": 155,
+      "positives": 8,
+      "positive_rate": 0.0516,
+      "roc_auc": 0.6054,
+      "pr_auc": 0.0727,
+      "threshold": 0.1418,
+      "recall": 1.0,
+      "precision": 0.0548,
+      "true_negatives": 9,
+      "false_positives": 138,
+      "false_negatives": 0,
+      "true_positives": 8
+    },
+    "floresta_aleatoria": {
+      "n": 155,
+      "positives": 8,
+      "positive_rate": 0.0516,
+      "roc_auc": 0.4609,
+      "pr_auc": 0.0506,
+      "threshold": 0.3521,
+      "recall": 1.0,
+      "precision": 0.0588,
+      "true_negatives": 19,
+      "false_positives": 128,
+      "false_negatives": 0,
+      "true_positives": 8
+    }
+  },
+  "importances": [
+    {
+      "feature": "state",
+      "importance": 0.01692,
+      "std": 0.00714
+    },
+    {
+      "feature": "dry_spell_max_days",
+      "importance": 0.00595,
+      "std": 0.00405
+    },
+    {
+      "feature": "elevation_range_m",
+      "importance": 0.00459,
+      "std": 0.00692
+    },
+    {
+      "feature": "slope_mean_deg",
+      "importance": 0.00368,
+      "std": 0.00229
+    },
+    {
+      "feature": "days_rain72h_ge30",
+      "importance": 0.00228,
+      "std": 0.00629
+    },
+    {
+      "feature": "elevation_mean_m",
+      "importance": 0.00062,
+      "std": 0.00456
+    },
+    {
+      "feature": "start_month",
+      "importance": 0.00032,
+      "std": 0.00372
+    },
+    {
+      "feature": "days_thunderstorm",
+      "importance": 0.0,
+      "std": 0.0
+    },
+    {
+      "feature": "coordinate_source",
+      "importance": -7e-05,
+      "std": 0.00038
+    },
+    {
+      "feature": "rain_max_day_mm",
+      "importance": -0.00114,
+      "std": 0.00116
+    },
+    {
+      "feature": "weather_days",
+      "importance": -0.00142,
+      "std": 0.00453
+    },
+    {
+      "feature": "pct_lowland",
+      "importance": -0.00188,
+      "std": 0.00412
+    },
+    {
+      "feature": "pct_exposed",
+      "importance": -0.00202,
+      "std": 0.00478
+    },
+    {
+      "feature": "area_ha",
+      "importance": -0.00236,
+      "std": 0.00286
+    },
+    {
+      "feature": "gust_max_kmh",
+      "importance": -0.00304,
+      "std": 0.0038
+    },
+    {
+      "feature": "rain_total_mm",
+      "importance": -0.00339,
+      "std": 0.00281
+    },
+    {
+      "feature": "coverage_days",
+      "importance": -0.00473,
+      "std": 0.00871
+    },
+    {
+      "feature": "aspect_label",
+      "importance": -0.00477,
+      "std": 0.01093
+    },
+    {
+      "feature": "temp_max_c",
+      "importance": -0.00564,
+      "std": 0.00972
+    },
+    {
+      "feature": "rh_min_pct",
+      "importance": -0.00936,
+      "std": 0.00547
+    },
+    {
+      "feature": "crop_group",
+      "importance": -0.02592,
+      "std": 0.01519
+    },
+    {
+      "feature": "slope_max_deg",
+      "importance": -0.02635,
+      "std": 0.01215
+    }
+  ],
+  "beats_baseline": false,
+  "verdict": {
+    "pr_auc_difference": -0.0188,
+    "ci95_low": -0.1275,
+    "ci95_high": 0.0384,
+    "p_model_better": 0.2603,
+    "indistinguishable": true,
+    "resamples": 9998
+  }
+}

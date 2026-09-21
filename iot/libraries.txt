@@ -5,3 +5,5 @@ Adafruit MPU6050
 Adafruit Unified Sensor
 DHT sensor library
 ArduinoJson
+Adafruit SSD1306
+Adafruit GFX Library

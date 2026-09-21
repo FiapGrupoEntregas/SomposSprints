@@ -7,7 +7,7 @@
 | Depende de | I2 |
 | Janela | 20/09 |
 | Responsável | Dev |
-| Status | ⬜ A fazer |
+| Status | ✅ Pronto |
 
 ## Objetivo
 
@@ -41,10 +41,10 @@ histórico (W11) e a demo sobrevivam a um reinício da API.
 
 ## Critérios de aceite
 
-- [ ] Com a API reiniciada, os dados continuam lá.
-- [ ] `event_id` duplicado não cria uma linha nova (constraint UNIQUE + tratamento da exceção).
-- [ ] `telemetry_since(device, 10 min)` devolve em ordem cronológica.
-- [ ] Os testes usam `sqlite://` em memória (`StaticPool`) e não deixam arquivo para trás.
+- [x] Com a API reiniciada, os dados continuam lá.
+- [x] `event_id` duplicado não cria uma linha nova (constraint UNIQUE + tratamento da exceção).
+- [x] `telemetry_since(device, 10 min)` devolve em ordem cronológica.
+- [x] Os testes usam `sqlite://` em memória (`StaticPool`) e não deixam arquivo para trás.
 
 ## Testes
 
@@ -59,8 +59,8 @@ histórico (W11) e a demo sobrevivam a um reinício da API.
 
 ## Tarefas
 
-- [ ] `uv add sqlmodel` + sincronizar os requirements
-- [ ] Modelos e `create_db` no lifespan
-- [ ] Repositório + testes
-- [ ] Ligar os callbacks do I2
-- [ ] Atualizar `.env.example` e os READMEs
+- [x] `uv add sqlmodel` + sincronizar os requirements (já tinha vindo com a D1)
+- [x] Modelos e `create_db` no lifespan
+- [x] Repositório + testes
+- [x] Ligar os callbacks do I2
+- [x] Atualizar `.env.example` e os READMEs

@@ -22,6 +22,8 @@ click==8.5.0
     # via
     #   rich-toolkit
     #   uvicorn
+cloudpickle==3.1.2
+    # via joblib
 colorama==0.4.6 ; sys_platform == 'win32'
     # via
     #   pytest
@@ -44,6 +46,8 @@ fastar==0.12.0
     # via
     #   fastapi
     #   fastapi-cloud-cli
+greenlet==3.5.6 ; platform_machine == 'AMD64' or platform_machine == 'WIN32' or platform_machine == 'aarch64' or platform_machine == 'amd64' or platform_machine == 'ppc64le' or platform_machine == 'win32' or platform_machine == 'x86_64'
+    # via sqlalchemy
 h11==0.16.0
     # via
     #   httpcore
@@ -66,22 +70,47 @@ iniconfig==2.3.0
     # via pytest
 jinja2==3.1.6
     # via fastapi
+joblib==1.6.0
+    # via
+    #   agrishield-api
+    #   scikit-learn
 markdown-it-py==4.2.0
     # via rich
 markupsafe==3.0.3
     # via jinja2
 mdurl==0.1.2
     # via markdown-it-py
+narwhals==2.26.0
+    # via scikit-learn
+numpy==2.4.6 ; python_full_version < '3.12'
+    # via
+    #   agrishield-api
+    #   pandas
+    #   scikit-learn
+    #   scipy
+numpy==2.5.3 ; python_full_version >= '3.12'
+    # via
+    #   agrishield-api
+    #   pandas
+    #   scikit-learn
+    #   scipy
 packaging==26.3
     # via pytest
+paho-mqtt==2.1.0
+    # via agrishield-api
+pandas==3.0.6
+    # via agrishield-api
 pluggy==1.6.0
     # via pytest
+pyarrow==25.0.1
+    # via agrishield-api
 pydantic==2.13.5
     # via
     #   fastapi
     #   fastapi-cloud-cli
     #   pydantic-extra-types
     #   pydantic-settings
+    #   sqlmodel
 pydantic-core==2.46.5
     # via pydantic
 pydantic-extra-types==2.11.1
@@ -95,6 +124,8 @@ pygments==2.21.0
     #   pytest
     #   rich
 pytest==9.1.1
+python-dateutil==2.9.0.post0
+    # via pandas
 python-dotenv==1.2.3
     # via
     #   pydantic-settings
@@ -114,12 +145,26 @@ rich-toolkit==0.20.5
 rignore==0.8.1
     # via fastapi-cloud-cli
 ruff==0.16.7
+scikit-learn==1.9.1
+    # via agrishield-api
+scipy==1.17.1 ; python_full_version < '3.12'
+    # via scikit-learn
+scipy==1.18.1 ; python_full_version >= '3.12'
+    # via scikit-learn
 sentry-sdk==2.69.1
     # via fastapi-cloud-cli
 shellingham==1.5.4
     # via typer
+six==1.17.0
+    # via python-dateutil
+sqlalchemy==2.0.54
+    # via sqlmodel
+sqlmodel==0.0.42
+    # via agrishield-api
 starlette==1.6.0
     # via fastapi
+threadpoolctl==3.7.0
+    # via scikit-learn
 typer==0.27.2
     # via
     #   fastapi-cli
@@ -132,6 +177,8 @@ typing-extensions==4.16.0
     #   pydantic-core
     #   pydantic-extra-types
     #   rich-toolkit
+    #   sqlalchemy
+    #   sqlmodel
     #   starlette
     #   typing-inspection
 typing-inspection==0.4.4
@@ -139,6 +186,8 @@ typing-inspection==0.4.4
     #   fastapi
     #   pydantic
     #   pydantic-settings
+tzdata==2026.4 ; sys_platform == 'emscripten' or sys_platform == 'win32'
+    # via pandas
 urllib3==2.7.0
     # via sentry-sdk
 uvicorn==0.53.0
