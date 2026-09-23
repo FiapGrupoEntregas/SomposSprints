@@ -116,7 +116,7 @@ def equipment_trend(
             date=day,
             readings=len(rows),
             operating_hours=operating_hours(len(rows)),
-            pct_time_above_limit=_pct_above_limit(rows),
+            pct_time_above_limit=pct_above_limit(rows),
             alerts=alerts_by_day.get(day, 0),
             max_roll_deg=round(max(abs(row.roll_deg) for row in rows), DECIMALS) if rows else None,
         )
@@ -130,7 +130,7 @@ def equipment_trend(
         purpose=EQUIPMENT_PURPOSE,
         readings=len(readings),
         operating_hours=operating_hours(len(readings)),
-        pct_time_above_limit=_pct_above_limit(readings),
+        pct_time_above_limit=pct_above_limit(readings),
         alerts=sum(1 for event in events if event.type in ALERT_EVENT_TYPES),
         rollovers=sum(1 for event in events if event.type == EventType.ROLLOVER.value),
         trend=trend,
@@ -240,7 +240,13 @@ def count_above_limit(rows: list[Telemetry]) -> int:
     return sum(1 for row in rows if row.alert_level in ABOVE_LIMIT_LEVELS)
 
 
-def _pct_above_limit(rows: list[Telemetry]) -> float:
+def pct_above_limit(rows: list[Telemetry]) -> float:
+    """% das leituras em alerta 🔴 ou capotamento, arredondado. Compartilhada com a W11.
+
+    Pública pelo mesmo motivo de `operating_hours`: o histórico do equipamento (W11) publica o
+    mesmo número que o relatório (W12), e compartilhar a **função** é o que impede os dois de
+    divergirem sem que alguém edite esta linha.
+    """
     if not rows:
         return 0.0
     return round(100.0 * count_above_limit(rows) / len(rows), DECIMALS)

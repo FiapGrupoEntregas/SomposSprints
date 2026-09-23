@@ -2,8 +2,10 @@
 
 O alerta ao operador continua vindo **só das regras**: nível, limite e motivos são calculados em
 `app/services/risk.py` e nada aqui os altera. O modelo entra **ao lado**, como uma segunda
-leitura para a seguradora — que é exatamente o que a D3 mediu ser o certo: no teste de 2024 ele
-**não superou** o baseline por regras.
+leitura para a seguradora. No teste de 2024 com o dataset completo ele **superou** o baseline por
+regras (AUC-PR 0,144 × 0,074), mas por pouco, com 26 sinistros, e num alvo mais amplo do que o
+perigo que o alerta trata — por isso o alerta continua sendo das regras. O texto da ressalva é
+montado a partir do JSON do artefato, então acompanha o resultado sem edição manual.
 
 ## A ressalva que precisa viajar junto com o número
 
@@ -16,6 +18,13 @@ Isso não é um detalhe de implementação: é o que define como o número pode 
 para **comparar dias e fazendas entre si**, não como probabilidade calibrada de sinistro naquele
 dia. Por isso a resposta carrega `note`, as métricas do teste e o tamanho da amostra — a
 honestidade fica no dado, não só no slide.
+
+O **relevo** tem a sua própria ressalva: o treino (D2) descreve cada apólice por uma grade
+**3 × 3** de ~370 m por célula (`services/dataset.py::terrain_features`) e aqui as mesmas
+variáveis são recalculadas sobre a grade **10 × 10** da fazenda (W2). A *definição* de cada
+variável é a mesma — média da grade, orientação da célula central, % de baixada e de topo
+exposto —, mas a **resolução** não, e média e percentuais mudam de valor com o tamanho da célula.
+Mais um motivo para o número ser comparativo.
 """
 
 import logging
@@ -26,6 +35,10 @@ from app.schemas.risk import DayRisk, ModelDriver, ModelInfo, ModelScore
 from app.schemas.terrain import TerrainResponse
 from app.schemas.weather import DailyWeather
 from app.services import model as model_service
+
+# O limiar de solo saturado vem do módulo das regras (W3), não de uma cópia: é a mesma definição
+# que a D2 usou para montar `days_rain72h_ge30` no dataset de treino.
+from app.services.risk import SOIL_SATURATED_RAIN_72H_MM
 from app.services.underwriting import class_percentages
 
 logger = logging.getLogger(__name__)
@@ -61,7 +74,9 @@ def build_features(farm: Farm, terrain: TerrainResponse, day: DailyWeather) -> d
     return {
         "slope_mean_deg": stats.slope_mean_deg,
         "slope_max_deg": stats.slope_max_deg,
-        "elevation_mean_m": (stats.elevation_min_m + stats.elevation_max_m) / 2,
+        # Média das células, como no treino (`dataset.py::terrain_features` usa `grid.mean()`).
+        # O ponto médio entre mínimo e máximo seria outra grandeza.
+        "elevation_mean_m": _mean_elevation_m(terrain),
         "elevation_range_m": stats.elevation_range_m,
         "pct_lowland": pct_lowland,
         "pct_exposed": pct_exposed,
@@ -70,7 +85,7 @@ def build_features(farm: Farm, terrain: TerrainResponse, day: DailyWeather) -> d
         # eram duas variáveis independentes (soma da safra × pior dia dela): mais um motivo
         # para o valor ser comparativo, e não uma probabilidade calibrada.
         "rain_max_day_mm": day.rain_mm,
-        "days_rain72h_ge30": 1 if day.rain_72h_mm >= 30.0 else 0,
+        "days_rain72h_ge30": 1 if day.rain_72h_mm >= SOIL_SATURATED_RAIN_72H_MM else 0,
         "days_thunderstorm": 1 if day.thunderstorm else 0,
         "gust_max_kmh": day.gust_max_kmh,
         "temp_max_c": day.temp_max_c,
@@ -82,7 +97,7 @@ def build_features(farm: Farm, terrain: TerrainResponse, day: DailyWeather) -> d
         "start_month": day.date.month,
         "crop_group": _crop_group(farm.crop),
         "state": farm.state,
-        "aspect_label": _dominant_aspect_label(terrain),
+        "aspect_label": _center_aspect_label(terrain),
         "coordinate_source": "decimal",
     }
 
@@ -213,39 +228,63 @@ def _note(metadata: dict, chosen: dict, baseline: dict) -> str:
     samples = chosen.get("n")
     positives = chosen.get("positives")
 
-    comparison = (
-        "**não superou** o baseline por regras"
-        if not metadata.get("beats_baseline", False)
-        else "superou o baseline por regras"
-    )
     scores = ""
     if chosen.get("pr_auc") is not None and baseline.get("pr_auc") is not None:
-        scores = (
-            f" (AUC-PR {_number(chosen['pr_auc'])} contra {_number(baseline['pr_auc'])} do "
-            f"baseline)"
-        )
+        scores = f" (AUC-PR {_number(chosen['pr_auc'])} contra {_number(baseline['pr_auc'])})"
 
     size_note = f"{total} linhas" if total else "poucas linhas"
     test_note = f"{samples} linhas e {positives} sinistros" if samples else "uma amostra pequena"
 
     return (
         f"Modelo treinado com sinistros reais do PSR ({size_note}, uma linha por apólice/safra) "
-        f"e testado em {test_note}. No teste, ele {comparison}{scores}, então **as regras "
-        "continuam sendo a base do alerta ao operador**. Aqui ele é aplicado a uma janela de um "
-        "dia, bem mais curta que a safra em que foi treinado: use o valor para comparar dias e "
-        "fazendas, não como probabilidade calibrada."
+        f"e testado em {test_note}. {_verdict(metadata, scores)} Aqui ele é aplicado a uma janela "
+        "de um dia, bem mais curta que a safra em que foi treinado: use o valor para comparar "
+        "dias e fazendas, não como probabilidade calibrada."
     )
 
 
-def _dominant_aspect_label(terrain: TerrainResponse) -> str | None:
-    """Orientação predominante da fazenda, como o dataset da D3 a registra."""
-    if not terrain.cells:
-        return None
+def _verdict(metadata: dict, scores: str) -> str:
+    """A comparação com o baseline **e o conectivo que combina com ela** (regras-de-risco §11).
 
-    counts: dict[str, int] = {}
+    Quando o modelo perde, "então as regras continuam sendo a base" é a conclusão da derrota.
+    Quando ele ganha, a conclusão é a mesma — mas não decorre da vitória, e emendar as duas com
+    "então" entrega à banca um não-sequitur. Das três razões da §11 (explicabilidade, offline e o
+    alvo), o ramo vencedor cita a do **alvo**: é a única que qualifica a própria comparação que a
+    frase acabou de mostrar — o modelo ganha em "qualquer indenização", dominado por seca e geada,
+    e não no encharcamento e na tempestade que o alerta trata. Explicabilidade e offline continuam
+    escritas na §11 e no cartão ao lado; aqui elas não caberiam sem estourar o espaço do cartão.
+    """
+    if metadata.get("beats_baseline", False):
+        return (
+            f"No teste, ele superou o baseline por regras{scores}, mas num alvo mais amplo — "
+            "qualquer indenização, dominada por seca e geada — do que o encharcamento e a "
+            "tempestade que o alerta trata. **As regras continuam sendo a base do alerta ao "
+            "operador.**"
+        )
+    return (
+        f"No teste, ele **não superou** o baseline por regras{scores}, então **as regras "
+        "continuam sendo a base do alerta ao operador**."
+    )
+
+
+def _center_aspect_label(terrain: TerrainResponse) -> str | None:
+    """Orientação da **célula central**, como o dataset da D3 a registra.
+
+    A D2 grava `aspect_label(aspect_deg[centro, centro])` — a orientação de onde fica a sede
+    informada na apólice —, não a orientação mais frequente. Usar a moda aqui entregaria ao
+    modelo uma variável definida de outro jeito que no treino.
+    """
+    center = terrain.grid_size // 2
     for cell in terrain.cells:
-        counts[cell.aspect_label.value] = counts.get(cell.aspect_label.value, 0) + 1
-    return max(counts, key=lambda label: counts[label])
+        if cell.row == center and cell.col == center:
+            return cell.aspect_label.value
+    return None
+
+
+def _mean_elevation_m(terrain: TerrainResponse) -> float | None:
+    """Elevação **média** das células, como `dataset.py::terrain_features` a calcula."""
+    elevations = [cell.elevation_m for cell in terrain.cells]
+    return sum(elevations) / len(elevations) if elevations else None
 
 
 def _number(value: float) -> str:

@@ -113,7 +113,7 @@ CATEGORICAL_FEATURES = ("crop_group", "state", "aspect_label", "coordinate_sourc
 #: Colunas de propósito **fora** do modelo:
 #: - `policy_year`: a divisão é temporal; aprender a taxa de cada ano não generaliza para o ano
 #:   seguinte, que é exatamente o que queremos medir.
-#: - `lat`/`lon`, `municipality`, `geocode_ibge`, `proposal_id`: com 1.184 linhas, o modelo
+#: - `lat`/`lon`, `municipality`, `geocode_ibge`, `proposal_id`: com 2.256 linhas, o modelo
 #:   decoraria localidades em vez de aprender relevo e clima. A geografia entra por `state`.
 #: - `crop`: 28 valores para 775 linhas de treino; entra agrupado, como `crop_group`.
 EXCLUDED_FROM_MODEL = (
@@ -409,9 +409,11 @@ def bootstrap_pr_auc_se(y_true, score_a, score_b, seed: int = 42) -> float:
 def compare_on_test(y_true, baseline, model, resamples: int = VERDICT_RESAMPLES) -> dict:
     """Quanto o modelo ganha (ou perde) do baseline em AUC-PR, **com incerteza**.
 
-    Dizer "0,073 contra 0,091" sem intervalo convida a pergunta certa da banca: *isso é diferença
-    de verdade?* Com 8 positivos no teste, quase nada é. O bootstrap é **pareado** — o mesmo vetor
-    de índices reamostra os dois scores — porque as duas AUC-PR são medidas nas mesmas linhas.
+    Dizer "0,144 contra 0,074" sem intervalo convida a pergunta certa da banca: *isso é diferença
+    de verdade?* Com 26 positivos no teste, o intervalo é largo: em 21/09 a diferença saiu +0,0697
+    com IC 95% [+0,003, +0,169], ou seja, positiva por pouco. O bootstrap é **pareado** — o mesmo
+    vetor de índices reamostra os dois scores — porque as duas AUC-PR são medidas nas mesmas
+    linhas.
     """
     y_true = np.asarray(y_true).astype(int)
     baseline = np.asarray(baseline, dtype=float)

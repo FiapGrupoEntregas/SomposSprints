@@ -7,7 +7,7 @@
 | Depende de | D1, I1, W2 |
 | Janela | 20/09 |
 | Responsável | dev-dados |
-| Status | 🟡 Parcial — código e testes prontos, dataset com 1.184 de 2.500 linhas (cota diária da Open-Meteo) |
+| Status | ✅ Concluída (21/09/2026) — dataset com **2.256 linhas**, acima das 2.000 que o critério pede |
 
 ## Objetivo
 
@@ -46,7 +46,7 @@ local e o clima do período de vigência, com o rótulo "houve sinistro climáti
 
 ## Critérios de aceite
 
-- [ ] O dataset tem pelo menos 2.000 linhas, com a taxa de sinistro real preservada — **1.184 linhas** (taxa preservada: 16,8% × 18,2% da população). Falta cota, não código: um comando completa.
+- [x] O dataset tem pelo menos 2.000 linhas, com a taxa de sinistro real preservada — **2.256 linhas**, `target_claim` 17,3%. A fidelidade melhorou com o lote completado: o desvio médio da taxa de sinistro por safra contra a população caiu de 2,80 pp (1.184 linhas) para **0,90 pp**.
 - [x] Nenhuma feature usa informação posterior ao fim da vigência.
 - [x] A geração é retomável: matar o script no meio e rodar de novo não perde o que já foi feito.
 - [x] Ficha no `document/dados-e-modelo.md` com a data de geração, o número de linhas, as fontes e as features.
@@ -64,12 +64,38 @@ local e o clima do período de vigência, com o rótulo "houve sinistro climáti
 - [x] Amostragem estratificada + testes
 - [x] Construção das features + testes
 - [x] Script em lote com retomada
-- [x] Dataset gerado, versionado e documentado (parcial: 1.184 linhas)
+- [x] Dataset gerado, versionado e documentado (2.256 linhas)
 
-## Resultado (20/09/2026)
+## Resultado (21/09/2026)
 
-`data/dataset_treino.parquet`: **1.184 linhas**, 2016–2024, 14 UFs, 28 culturas.
-`target_claim` 199 (16,8%) · `target_rain_claim` 49 (4,1%). Consumo: **2.345 chamadas**.
+`data/dataset_treino.parquet`: **2.256 linhas** (de 2.500 pedidas), 2016–2024, 15 UFs, 32 culturas.
+`target_claim` 390 (**17,3%**) · `target_rain_claim` 94 (**4,2%**). Ficha em `data/dataset_treino.json`.
+
+**Por que 2.256 e não 2.500.** A execução parou pela **cota diária** da Open-Meteo, depois de
+2.226 chamadas bem-sucedidas e 644 recusas 429. A confirmação veio de uma chamada avulsa com
+`curl` logo após a parada: os **três** subdomínios (elevação, `archive-api` e
+`historical-forecast-api`) responderam 429 com `"Daily API request limit exceeded"`. A execução foi
+encerrada à mão e o parquet fechado com `--consolidar`, que não gasta chamada. As 244 linhas
+restantes não mudam nada: o critério pede 2.000. Descartes: 47 propriedades sem elevação e 112
+janelas de clima recusadas.
+
+> ⚠️ **Armadilha registrada:** chegamos a diagnosticar "limite de ritmo" porque o log não tem
+> nenhum `Daily API request limit exceeded`. Ele **não pode ter**: o cliente chama
+> `raise_for_status()` e o `httpx.HTTPStatusError` carrega só código e URL — o corpo, onde está o
+> motivo, nunca chega ao logger. A única forma de distinguir cota de ritmo hoje é uma chamada
+> avulsa olhando o corpo.
+
+**As duas paradas da D2 foram pela mesma causa**, em subdomínios diferentes: 20/09 no `archive-api`
+(elevação e `historical-forecast` ainda respondiam 200) e 21/09 nos três. O que estoura o teto é o
+**peso**: a cota é de 10.000 unidades/dia e cada chamada de clima cobre a vigência inteira
+(~300 dias), o que pela regra da própria Open-Meteo vale ~21 chamadas. Baixar o ritmo não ajuda.
+Detalhes em
+[dados-e-modelo.md](../document/dados-e-modelo.md#orçamento-de-chamadas-da-open-meteo).
+
+### Resultado de 20/09/2026 (parcial, mantido para histórico)
+
+`data/dataset_treino.parquet`: **1.184 linhas**. `target_claim` 199 (16,8%). Consumo: 2.345 chamadas.
+Parou pela **cota diária** do `archive-api`.
 
 **Dois achados que mudaram o desenho:**
 
@@ -80,6 +106,8 @@ local e o clima do período de vigência, com o rótulo "houve sinistro climáti
 2. **A Elevation API recusa chamadas multiponto**, apesar de documentar 100 pontos. Vai uma
    propriedade (9 pontos) por chamada, com limitador próprio.
 
-**Limitação:** a `archive-api` estourou a cota **diária** no meio da geração. A amostra parada é
-não enviesada e o parcial está salvo; `build_dataset.py -n 2500` completa sem refazer nada.
-Detalhes em [dados-e-modelo.md](../document/dados-e-modelo.md).
+### O que a amostra completada mostrou
+
+A fatia de 2024 das primeiras 1.184 linhas tinha **5,2%** de sinistro; a população de 2024 tem
+**9,46%** e a amostra completa tem **8,5%**. Era uma fatia atípica, e foi ela que sustentou a
+conclusão da D3 publicada em 20/09 — ver [D3](D3-modelo-preditivo.md).

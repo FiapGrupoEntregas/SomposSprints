@@ -26,8 +26,16 @@ Valores do MPU6050 para cada ângulo: ver a tabela em [iot/README.md](../iot/REA
 > Se sobrar tempo no ao vivo, vale um oitavo passo: a página **Relatórios** (W12), com as
 > tendências por equipamento, região e cultura sobre 1,5 milhão de apólices reais, e o **cartão
 > do modelo** no Mapa de risco (W13) — que mostra a probabilidade ao lado do nível por regras e
-> diz, na própria tela, que o modelo **não superou** o baseline. Assumir esse resultado costuma
-> render mais crédito com a banca do que escondê-lo.
+> exibe a ressalva do artefato na íntegra.
+>
+> **Desde 21/09 o resultado é outro: com a D2 fechada em 2.256 linhas e o modelo retreinado, ele
+> passou a superar o baseline por regras** no teste de 2024 (AUC-PR 0,144 × 0,074). **Diga as
+> ressalvas junto:** são 26 sinistros no teste (o próprio `train_model.py` exige 30 para conclusão
+> firme), o IC 95% da diferença quase toca o zero ([+0,003, +0,169]) e a virada veio da **troca do
+> conjunto de teste**, não de o modelo ter ficado melhor — o modelo de 20/09, sem retreino, já
+> venceria no teste novo. Assumir o resultado com as ressalvas costuma render mais crédito com a
+> banca do que vendê-lo redondo. Leia do cartão, que sai do artefato; a leitura completa está em
+> [dados-e-modelo.md](dados-e-modelo.md#resultados-do-modelo-d3).
 
 > **Semana seca?** Setembro costuma ser seco em MG. Se a previsão real não tiver chuva, ligue o
 > **cenário "chuva forte (simulado)"** nos passos 2 e 3 e diga isso em voz alta: "este é um cenário
@@ -70,6 +78,16 @@ No **Windows**, o script não roda: use o WSL ou os dois terminais do PowerShell
       limite do equipamento (W4). O `--aquecer` ainda chama o `GET /replay/summary` (W9), que a
       frio é o mais caro do projeto — 5 elevações + 5 históricos numa requisição só. Medido em
       20/09/2026: **3 s a frio e ~6 ms depois**, com o aquecimento completo em 5 s.
+      🔴 **Em 21/09/2026 a cota diária foi esgotada de verdade, e deu para medir o estrago**
+      ([evidência](evidencias/2026-09-21-degradacao-sem-cota.md)): sem clima caem **relevo,
+      previsão de risco e limite do dia** — e, com o limite, cai a **publicação do `config` no
+      MQTT**, ou seja, **o ESP32 não recebe limite nenhum**. Não é só o mapa. Continuam de pé:
+      fazendas, os três relatórios, o replay, o painel ao vivo e a auditoria — dá para improvisar,
+      mas não é a demo.
+      Duas consequências: **(1)** aquecer o cache deixou de ser recomendação e é **pré-requisito**;
+      **(2)** **não gere dataset no dia da apresentação** — uma execução do `build_dataset.py`
+      consome a cota inteira, porque cada requisição de clima pesa ~21 chamadas (o teto prático é
+      de ~465 apólices por dia). Ver [dados-e-modelo.md](dados-e-modelo.md).
 - [ ] API no ar: http://localhost:8000/api/v1/health retorna `ok`
 - [ ] **As duas chaves, e compatíveis entre si** (I5). `AGRISHIELD_API_KEYS` no `api/.env` **e**
       `AGRISHIELD_API_KEY` no ambiente do front, com um valor que esteja na lista da API. Faltando
@@ -96,6 +114,7 @@ No **Windows**, o script não roda: use o WSL ou os dois terminais do PowerShell
 | Sem internet | Hotspot do celular. Se não der, passar o **vídeo de backup** |
 | Broker HiveMQ fora | Trocar para `test.mosquitto.org` nos **dois** lados (ver abaixo) |
 | Open-Meteo lenta ou fora | A API serve o último cache. Aquecer antes com `run-demo.sh --aquecer` |
+| **Cota da Open-Meteo esgotada** (429 com `Daily API request limit exceeded`) | Não passa até as 00:00 UTC, e **nenhum recuo resolve**. Caem mapa, relevo, limite do dia e o `config` para o ESP32. Vá para os relatórios, o replay e o painel ao vivo, e use o vídeo de backup no trecho do limite. Confirme a causa com `curl` olhando o **corpo** da resposta, não o código |
 | Botão "Enviar ao equipamento" dá 401 | Chave faltando ou diferente entre API e front. Pare, rode `./scripts/run-demo.sh --conferir`, corrija e suba de novo |
 | Painel "offline" com o Wokwi rodando | São os 20 s sem telemetria (W5). Confira `[mqtt] conectado` no Serial e o **prefixo** igual nos dois lados |
 | Broker cai no meio da demo | A API reconecta sozinha; a detecção leva de 1× a 2× o keepalive (15 s ⇒ ~15–30 s, medido na I6). Continue falando e espere |

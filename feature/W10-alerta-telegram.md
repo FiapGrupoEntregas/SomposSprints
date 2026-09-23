@@ -7,7 +7,7 @@
 | Depende de | I2, E5 |
 | Janela | só se sobrar tempo |
 | Responsável | Dev |
-| Status | ⬜ A fazer |
+| Status | ⛔ Fora do escopo (21/09/2026): exige token de bot do Telegram, que o time não tem. O alerta de capotamento continua existindo no painel ao vivo (W5) e na trilha de auditoria (I5) — o que não existe é a notificação **fora** do sistema. |
 
 ## Objetivo
 

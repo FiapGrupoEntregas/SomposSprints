@@ -38,18 +38,18 @@ público, e isso funciona em qualquer rede. Ver [decisoes.md](decisoes.md) (ADR-
 ## Diagrama final (entrada → banco → modelo → saída)
 
 Este é o **entregável 6 do enunciado**: o caminho completo do dado, do jeito que o sistema está
-construído. Conferido contra o código em **20/09/2026** (arquivos, tabelas e rotas existentes).
+construído. Conferido contra o código em **21/09/2026** (arquivos, tabelas e rotas existentes).
 
 > **Como ler:** caixa de **contorno contínuo = entregue e com teste**. Caixa **tracejada em
 > vermelho = ainda não implementada** — estaria no diagrama para mostrar onde encaixa, com o
 > rótulo da feature que falta. Nada aqui é ilustração de intenção: se está sólido, existe no
 > repositório.
 >
-> **Na revisão de 20/09 não sobrou nenhuma caixa tracejada:** tudo que está desenhado foi
-> entregue, inclusive o modelo (D3) e o score híbrido (W13). O que **não** foi implementado
-> simplesmente não aparece no diagrama, para não dar a entender que faz parte do sistema —
-> é o caso do alerta pelo Telegram (W10), do histórico do equipamento (W11) e do **SoilGrids**,
-> que chegou a ser cogitado como fonte de solo e nunca foi escrito.
+> **Na revisão de 21/09 não sobrou nenhuma caixa tracejada:** tudo que está desenhado foi
+> entregue, inclusive o modelo (D3), o score híbrido (W13) e o histórico do equipamento (W11).
+> O que **não** foi implementado simplesmente não aparece no diagrama, para não dar a entender
+> que faz parte do sistema — é o caso do alerta pelo Telegram (W10) e do **SoilGrids**, que
+> chegou a ser cogitado como fonte de solo e nunca foi escrito.
 
 ```mermaid
 flowchart LR
@@ -81,10 +81,10 @@ flowchart LR
 
     subgraph OUT["5 · SAÍDA"]
         direction TB
-        REST["REST /api/v1 — 23 rotas<br/>farms · terrain · risk · devices<br/>reports · replay · audit"]
+        REST["REST /api/v1 — 24 rotas<br/>farms · terrain · risk · devices<br/>reports · replay · audit"]
         WEB["front-web/ — Streamlit<br/>mapa de relevo · risco 7 dias · equipamento<br/>subscrição · relatórios · replay"]
         CFG["MQTT config retained<br/>tilt_limit_deg → ESP32<br/>→ LEDs, buzzer e OLED na máquina"]
-        REP["relatórios e tendências (W12)<br/>subscrição (W8) · replay (W9)"]
+        REP["relatórios e tendências (W12)<br/>subscrição (W8) · replay (W9)<br/>histórico do equipamento (W11)"]
     end
 
     PSR --> LOAD --> DBASE
@@ -115,16 +115,20 @@ flowchart LR
 | Entrada | PSR completo, elevação, previsão, arquivo histórico, telemetria do ESP32, 3 fazendas | SoilGrids (solo) — cogitado, nunca implementado |
 | Ingestão | anonimização e normalização do PSR (D1), cliente com cache e *stale-if-error* (I1), ponte MQTT com deduplicação e hash (I2, I5) | — |
 | Banco | as 7 tabelas existem e são escritas (I3, I5, D1) | — |
-| Modelo | **regras explicáveis v1** (W2, W3, W4), o gerador de dataset (D2) e o **modelo treinado com métricas publicadas** (D3), lido pela API e exposto ao lado da regra (W13) | dataset completo: a D2 parou na cota diária da Open-Meteo, e o modelo foi treinado com a amostra parcial |
-| Saída | 23 rotas REST, seis telas do Streamlit, `config` retained no equipamento, alerta local, auditoria, relatórios (W12), subscrição (W8) e replay (W9) | alerta pelo Telegram (W10) e histórico do equipamento (W11), ambos P2 |
+| Modelo | **regras explicáveis v1** (W2, W3, W4), o gerador de dataset (D2, 2.256 linhas) e o **modelo treinado com métricas publicadas** (D3, retreinado em 21/09), lido pela API e exposto ao lado da regra (W13) | as 244 linhas que faltam para as 2.500 pedidas: o lote foi encerrado quando a **cota diária** da Open-Meteo se esgotou e foi consolidado com o que estava pronto |
+| Saída | 24 rotas REST, seis telas do Streamlit, `config` retained no equipamento, alerta local, auditoria, relatórios (W12), subscrição (W8), replay (W9) e histórico do equipamento (W11) | alerta pelo Telegram (W10) — **⛔ decidido fora do escopo** (exige token de bot), não é pendência de prazo |
 
-> **O modelo existe e não superou o baseline por regras.** Ele está no diagrama porque foi
-> treinado, versionado e é carregado pela API — e entra como **segunda leitura**, nunca no lugar
-> da regra. No conjunto de teste, o baseline por regras ficou à frente, e um bootstrap pareado
-> mostrou que a amostra é pequena demais para demonstrar superioridade de qualquer um dos dois.
-> Números, intervalo de confiança e a leitura completa em
-> [dados-e-modelo.md](dados-e-modelo.md#resultados-do-modelo-d3). O alerta ao operador continua
-> vindo das regras explicáveis.
+> **O modelo existe e, desde o retreino de 21/09, supera o baseline por regras — com ressalvas.**
+> Ele está no diagrama porque foi treinado, versionado e é carregado pela API — e entra como
+> **segunda leitura**, nunca no lugar da regra. No teste de 2024 marca AUC-PR 0,144 contra 0,074
+> do baseline (diferença +0,070, IC 95% [+0,003, +0,169]), mas: o teste tem **26 positivos**,
+> abaixo do mínimo de 30 que o próprio script de treino exige para conclusão firme; o IC quase
+> toca o zero; e a virada veio da **troca do conjunto de teste** (a D2 fechou em 2.256 linhas),
+> não de o modelo ter melhorado. Além disso, o baseline nunca discriminou o alvo `target_claim`,
+> dominado por **seca e geada** — no alvo que as regras de fato tratam (`target_rain_claim`,
+> chuva e tempestade) quem discrimina é o baseline. Números, intervalo de confiança e a leitura
+> completa em [dados-e-modelo.md](dados-e-modelo.md#resultados-do-modelo-d3). **O alerta ao
+> operador continua vindo das regras explicáveis** ([regras-de-risco.md §11](regras-de-risco.md)).
 
 **O que sustenta cada seta** — os arquivos citados no diagrama são os reais; a lista completa de
 rotas está em [Endpoints da API (v1)](#endpoints-da-api-v1), as tabelas em `api/app/models.py`, e a
@@ -137,7 +141,7 @@ situação feature a feature em [entregaveis.md](entregaveis.md) e
 
 1. O front pede `GET /api/v1/farms/{id}/risk?days=7`.
 2. A API monta uma grade 10×10 sobre a fazenda e busca a elevação em **1 chamada de 100 pontos** (`MAX_ELEVATION_POINTS = 100` em `clients/open_meteo.py`) → calcula a inclinação e as classes de terreno (W2). Cache de 24 h.
-   > ⚠️ **Ponto em aberto:** [dados-e-modelo.md](dados-e-modelo.md#orçamento-de-chamadas-da-open-meteo) registra que, em 20/09, chamadas de **99 pontos** voltaram `429` mesmo com pausa de 5 s, e por isso o gerador do dataset faz uma propriedade por chamada. O mapa de relevo continua pedindo 100 pontos de uma vez e funcionando na demo — o que sugere que a cota é por **ritmo**, não por chamada isolada. Enquanto isso não for medido de novo, vale o aviso do [demo.md](demo.md): aqueça o cache antes de apresentar.
+   > ⚠️ **Custo da chamada — resolvido em 21/09.** A hipótese de 20/09 era que a cota fosse por **ritmo**; ela foi **derrubada**. O teto da Open-Meteo é de **peso**: uma requisição que cobre mais de duas semanas conta como **várias** chamadas. Por isso o gerador do dataset (D2), cuja janela é a vigência da apólice, gasta ~21 chamadas por requisição de clima e esgota a cota **diária**, enquanto o mapa de relevo — 100 pontos de elevação numa requisição só, sem janela longa — continua pedindo tudo de uma vez e funcionando na demo. Baixar o ritmo não ajudaria; o que resolve é orçar por peso. A conta está em [dados-e-modelo.md](dados-e-modelo.md#orçamento-de-chamadas-da-open-meteo). Continua valendo o aviso do [demo.md](demo.md): aqueça o cache antes de apresentar, porque a cota é compartilhada com o que já foi gasto no dia.
 3. A API busca a previsão horária do centro da fazenda (`past_days=3`, `forecast_days=7`) e agrega por dia (I1). Cache de 1 h.
 4. O motor de risco cruza relevo × clima célula a célula e dia a dia (W3/W7) e devolve os níveis e os motivos.
 5. O front desenha o mapa e a linha do tempo.
@@ -158,9 +162,10 @@ situação feature a feature em [entregaveis.md](entregaveis.md) e
 
 Ao implementar um endpoint, marque ✅ aqui e no `api/README.md`.
 
-> Conferido em 20/09/2026 contra `api/app/api/v1/router.py`. São **23 rotas registradas**,
+> Conferido em 21/09/2026 contra `api/app/api/v1/router.py`. São **24 rotas registradas**,
 > contando cada variante `.csv` dos relatórios como uma rota própria (por isso a contagem da
-> tabela abaixo, que agrupa `.csv` na mesma linha, dá menos). O único item ⬜ é a W11, P2.
+> tabela abaixo, que agrupa `.csv` na mesma linha, dá menos). Não há nenhum item ⬜: todas as
+> rotas da tabela estão implementadas.
 
 | Método | Rota | Feature | Status |
 |---|---|---|---|
@@ -194,7 +199,7 @@ routes (HTTP)  →  services (regras, funções puras)  →  clients (Open-Meteo
                    repositories → db (SQLite, I3)
 ```
 
-Conferido em 20/09/2026, arquivo por arquivo. Em *itálico*, o que a feature prevê mas **ainda não
+Conferido em 21/09/2026, arquivo por arquivo. Em *itálico*, o que a feature prevê mas **ainda não
 existe**.
 
 - **routes** (`app/api/v1/routes/`): `health.py`, `farms.py`, `devices.py`, `reports.py`,
@@ -218,11 +223,12 @@ existe**.
 - O **pipeline de dados** (PSR → banco → dataset → modelo) está em [dados-e-modelo.md](dados-e-modelo.md).
 - O modelo entra como **probabilidade ao lado do score por regras** (W13), nunca no lugar dele.
   O artefato da D3 (`app/data/model/risk_model_v1.joblib` e o `.json` de métricas) está treinado e
-  versionado, e a API o **carrega, nunca treina**. **Ele não superou o baseline por regras** no
-  teste — resultado publicado em [dados-e-modelo.md](dados-e-modelo.md#resultados-do-modelo-d3),
-  com o bootstrap que mostra que a amostra nem permitiria demonstrar superioridade. Sem o
-  artefato no disco, a API sobe igual e responde só com as regras, com os campos do modelo em
-  `null`.
+  versionado, e a API o **carrega, nunca treina**. Depois do retreino de 21/09 sobre as 2.256
+  linhas da D2, **ele supera o baseline por regras** no teste de 2024 — com as três ressalvas que
+  andam junto do número (26 positivos, IC quase tocando o zero e virada vinda do conjunto de
+  teste, não do modelo), publicadas em
+  [dados-e-modelo.md](dados-e-modelo.md#resultados-do-modelo-d3). Sem o artefato no disco, a API
+  sobe igual e responde só com as regras, com os campos do modelo em `null`.
 - **Por que `app/core/versions.py` declara `MODEL_VERSION: str | None = None`, mesmo com modelo
   treinado.** É intencional, não resíduo. Essa constante é a versão usada quando a decisão foi
   tomada **sem** modelo — o caso das regras puras. A versão real do modelo **viaja com a
@@ -239,5 +245,8 @@ com INMET, ANA, SRTM e IBGE, e o Passaporte Digital completo.
 
 > O **score supervisionado** saiu desta lista: a [ADR-010](decisoes.md) revisou a ADR-006 quando
 > apareceu a base real do PSR, e ele virou a feature D3 — **treinada em 20/09/2026**. O resultado
-> reforçou a ADR-006 em vez de enterrá-la: o modelo não superou o baseline por regras, e o alerta
-> ao operador segue explicável. O modelo entrou como segunda leitura para a seguradora (W13).
+> reforçou a ADR-006 em vez de enterrá-la. Em 20/09 o modelo não superava o baseline; **no
+> retreino de 21/09 ele passou a superar, com ressalvas** — e mesmo assim o alerta ao operador
+> segue explicável, porque a vitória é no alvo "qualquer indenização" (dominado por seca e geada),
+> não no perigo que as regras tratam. Ver [regras-de-risco.md §11](regras-de-risco.md). O modelo
+> entrou como segunda leitura para a seguradora (W13).

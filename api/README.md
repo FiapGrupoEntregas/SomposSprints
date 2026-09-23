@@ -162,9 +162,13 @@ chuva posterior ao fim da vigência mexer em alguma feature.
 uv run --project .. python ../scripts/train_model.py
 ```
 
-**Resultado atual: o modelo não supera o baseline** (AUC-PR de teste 0,073 × 0,091). As regras
-seguem no comando, como `regras-de-risco.md` §11 previa. Números completos em
-[dados-e-modelo.md](../document/dados-e-modelo.md).
+**Resultado atual (21/09, com 2.256 linhas): o modelo supera o baseline** (AUC-PR de teste
+**0,144 × 0,074**, diferença +0,070 · IC 95% [+0,003, +0,169]). Com três ressalvas: 26 sinistros no
+teste (o mínimo declarado em `train_model.py` é 30), IC que quase toca o zero, e a virada veio do
+**conjunto de teste** ter deixado de ser atípico, não de o modelo ter melhorado — o artefato de
+20/09, sem retreino, também venceria no teste novo. As regras seguem comandando o alerta ao
+operador (`regras-de-risco.md` §11). Números completos e a decomposição em
+[dados-e-modelo.md](../document/dados-e-modelo.md#resultados-do-modelo-d3).
 
 **Sem o artefato a API sobe igual:** `get_model()` devolve `None` com aviso no log e quem chama
 segue só com as regras. O artefato versionado fica em `app/data/model/risk_model_v1.joblib` (7 KB)
@@ -506,10 +510,15 @@ horas operando, inclinação máxima, % do tempo acima do limite, alertas, capot
 e limites aplicados) e a **linha do tempo** dos eventos, na mesma forma que o painel ao vivo usa.
 
 Ele e o relatório do equipamento (W12) leem as mesmas linhas e **compartilham as funções**
-(`operating_hours` e `count_above_limit`, em `reports.py`), não só as constantes: a concordância
+(`operating_hours` e `pct_above_limit`, em `reports.py`), não só as constantes: a concordância
 é **estrutural**, não verificada. O que muda é a pergunta — o W12 é a série por dia ("está
 piorando?"), o W11 é o acumulado ("o que aconteceu com esta máquina?"). O teste que compara os
 dois continua lá, agora como rede de segurança.
+
+**O teto de 100 eventos é só da linha do tempo.** Os contadores do resumo saem de uma agregação
+`GROUP BY type` sobre a janela inteira, em consulta separada. Não é preciosismo: a API republica
+o `config` de hora em hora, então 7 dias já passam de 150 `limit_applied` — contar pela lista
+truncada faria os totais pararem em 100 em silêncio e divergirem do W12, que conta tudo.
 
 O campo `roadmap_note` diz o que isto **ainda não é**: score comportamental, portabilidade na
 revenda e assinatura digital ficam no roadmap.
@@ -674,8 +683,11 @@ curl -o culturas.csv "http://localhost:8000/api/v1/reports/crop.csv"
 
 `app/services/model_scoring.py` liga o motor de risco ao modelo da D3. **O alerta ao operador
 continua vindo só das regras**: nível, limite e motivos saem de `app/services/risk.py`, e nada do
-modelo os altera. O modelo entra **ao lado**, como segunda leitura para a seguradora — que é o
-que a D3 mediu ser o certo, porque no teste de 2024 ele **não superou** o baseline por regras.
+modelo os altera. O modelo entra **ao lado**, como segunda leitura para a seguradora. Desde o
+retreino de 21/09 ele **supera** o baseline no teste de 2024 (AUC-PR 0,144 × 0,074) e isso não
+muda o desenho: o alerta segue nas regras por explicabilidade, por rodar offline no ESP32 e
+porque a vitória é no alvo amplo "qualquer indenização", dominado por seca e geada, não no
+encharcamento e na tempestade que o alerta trata (regras-de-risco §11).
 
 Por dia, o `/risk` passa a trazer `model_probability`, `model_version` e `model_drivers`; e uma
 vez por resposta, o bloco `model`, com a versão, as métricas do teste e a ressalva de leitura.
@@ -685,11 +697,21 @@ Três garantias que valem mais que o número:
 - **O pipeline manda.** O `.joblib` e o `.json` são arquivos diferentes: um retreino interrompido
   deixa metadados novos com pipeline pela metade. Sem pipeline carregado, **não há bloco, não há
   campos e o `model_version` da trilha vem nulo** — os três coerentes entre si.
-- **Nada de métrica no código.** Versão, AUC, importâncias e até a frase "não superou o baseline"
-  saem do artefato em tempo de execução. Um retreino que mude o resultado inverte a frase sozinho.
+- **Nada de métrica no código.** Versão, AUC, importâncias e a própria frase da comparação saem
+  do artefato em tempo de execução. Um retreino que mude o resultado inverte a frase sozinho — e
+  o conectivo acompanha o ramo: perdendo, "então as regras continuam sendo a base do alerta";
+  ganhando, a vitória é qualificada pelo alvo e a conclusão vem em frase própria, para o cartão
+  nunca apresentar "as regras mandam" como consequência de o modelo ter ganho.
 - **A ressalva viaja com o número.** O modelo foi treinado com uma linha por apólice/safra e aqui
   é aplicado a um dia: o valor serve para **comparar dias e fazendas**, não como probabilidade
   calibrada. Está escrito em `model.note`, com os números do próprio artefato.
+- **A janela não é a única diferença: a resolução do relevo também muda.** O treino descreve cada
+  apólice por uma grade **3 × 3** de ~370 m por célula (`services/dataset.py::terrain_features`) e
+  a pontuação recalcula as mesmas variáveis sobre a grade **10 × 10** da fazenda (W2). A
+  *definição* é a mesma dos dois lados — média da grade, orientação da célula central, % de
+  baixada e de topo exposto, e o limiar de 72 h vindo de `services/risk.py` —, mas média e
+  percentuais mudam de valor com o tamanho da célula. `tests/test_model_scoring.py` trava as
+  definições comparando `build_features` com `dataset.terrain_features` sobre a mesma grade 3 × 3.
 
 Custo: **72 ms** por requisição com o modelo, contra 24 ms sem (7 dias × 100 células, Open-Meteo
 em cache). O `warm_up()` no lifespan tira da primeira requisição os ~50 ms de estreia do sklearn.

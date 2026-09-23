@@ -188,7 +188,7 @@ Ondas, na ordem em que os agentes são acionados:
 |---|---|
 | Portal do PSR fora do ar | Amostra versionada em `data/sample/` e banco já carregado |
 | Limite de chamadas da Open-Meteo | Cache, amostra menor e agrupamento por município |
-| Modelo não superar o baseline | Publicar o resultado honestamente; as regras seguem no comando |
+| Modelo não superar o baseline | Publicar o resultado honestamente; as regras seguem no comando. **Aconteceu em 20/09 e reverteu em 21/09:** com a D2 fechada em 2.256 linhas e o modelo retreinado, ele passou a superar o baseline no teste de 2024, com três ressalvas declaradas ([dados-e-modelo.md](dados-e-modelo.md#resultados-do-modelo-d3)). O plano B valeu nos dois sentidos — as regras seguem no comando do alerta de qualquer forma ([regras-de-risco.md §11](regras-de-risco.md)) |
 | Broker MQTT instável | Trocar para `test.mosquitto.org` |
 | Semana seca (sem risco na previsão) | Cenários simulados, sempre rotulados na tela |
 | Falta de tempo | A fila de features em `feature/README.md` define quem escorrega. P0 nunca |

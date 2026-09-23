@@ -220,6 +220,21 @@ funcionam offline no dispositivo. O modelo preditivo ([dados-e-modelo.md](dados-
 lado** delas e entrega uma probabilidade de sinistro para a seguradora. As regras também são o
 **baseline** contra o qual o modelo é comparado. Se o modelo não superar o baseline, as regras seguem no comando.
 
+**Situação em 21/09/2026: o modelo passou a superar o baseline** no teste de 2024 (AUC-PR 0,144 ×
+0,074). **Isso não muda nada aqui** — o alerta ao operador continua vindo das regras, e a decisão
+é da W13. São três razões, e nenhuma delas dependia de quem ganhava a comparação:
+
+1. **Explicabilidade.** O alerta precisa dizer *por quê*, com o número que o disparou. Uma
+   probabilidade não é um motivo.
+2. **Offline.** O limite de inclinação roda no ESP32, sem rede; o modelo vive na API.
+3. **O alvo.** O modelo ganha no alvo "qualquer indenização", que no PSR é dominado por seca e
+   geada. O perigo que estas regras tratam é encharcamento e tempestade — e, nesse alvo
+   (`target_rain_claim`), quem discrimina é o baseline. Ver a seção de resultados em
+   [dados-e-modelo.md](dados-e-modelo.md).
+
+O que o modelo ganha com isso é o lugar que já tinha: **a segunda leitura, para a seguradora**,
+exibida ao lado do nível por regras e com as ressalvas junto do número.
+
 ## Fontes dos limiares (T1)
 
 **Situação em 20/09/2026: esta tabela está vazia.** Nenhum limiar deste documento tem, até agora,

@@ -7,7 +7,7 @@
 | Depende de | I3 |
 | Janela | só se sobrar tempo |
 | Responsável | Dev |
-| Status | 🟦 Em revisão (API + seção no front prontas) |
+| Status | ✅ Pronto (aprovado na revisão em 21/09/2026) |
 
 ## Objetivo
 
@@ -42,7 +42,7 @@ equipamento, útil para renovação, sinistro e revenda. Liga a demo ao roadmap 
 ### Por que W11 e W12 coexistem sem duplicar
 
 Os dois leem as mesmas linhas e **compartilham as funções** de `app/services/reports.py`
-(`operating_hours` e `count_above_limit`), não só as constantes. Compartilhar a função torna a
+(`operating_hours` e `pct_above_limit`), não só as constantes. Compartilhar a função torna a
 concordância **estrutural**: não dá para os dois divergirem sem editar a mesma linha, e o teste
 cruzado passa a ser rede de segurança em vez de única defesa. O que muda é a pergunta: o W12 responde *"está piorando?"*, com série **por dia** para o gestor de frota; o W11
 responde *"o que aconteceu com esta máquina?"*, com **acumulado do período** e linha do tempo —

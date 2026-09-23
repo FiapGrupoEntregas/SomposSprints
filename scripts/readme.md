@@ -11,12 +11,22 @@ Scripts auxiliares do projeto (deploy, manutenção, automações).
 | `simulate_device.py` | **Simulador de dispositivo ESP32** (I6): publica telemetria, eventos e `status` no broker seguindo o [contrato MQTT](../document/contrato-mqtt.md), assina `config` e imprime o limite recebido. Seis cenários: `normal`, `alerta`, `capotamento`, `sujo`, `rajada`, `queda`. |
 | `build_dataset.py` | Gera `data/dataset_treino.parquet` cruzando as apólices (D1) com relevo (W2) e clima da vigência (I1). Retomável: pode ser morto e continuado. |
 | `train_model.py` | Treina o modelo, compara com o **baseline por regras** na mesma tabela e salva o artefato versionado em `api/app/data/model/`. |
+| `medir_mapa.py` | Mede o critério 7 da US-03: o mapa a frio (< 3 s) e com cache (< 200 ms). Sobe a API num processo próprio e **recusa rodar** com a cota da Open-Meteo esgotada, porque aí mediria a recusa. `--sem-clima` afere só o mecanismo. |
+| `_bootstrap.py` | Não roda sozinho. Deixa `api/` importável e resolve o caminho **absoluto** do banco para quem chama o SQLite (`load_psr.py`, `build_dataset.py`). |
 
-Os três de PSR usam o código da `api/`, então rode-os com o ambiente dela:
+Os de PSR usam o código da `api/`, então rode-os com o ambiente dela, **a partir da raiz**:
 
 ```bash
 uv run --project api python scripts/download_psr.py
 ```
+
+> **Por que existe o `_bootstrap.py`.** `Settings.database_url` tem como padrão um caminho
+> **relativo** (`sqlite:///./agrishield.db`), que só aponta para o banco real quando o processo
+> roda dentro de `api/`. Rodando da raiz — como esta página manda — o SQLite abria um arquivo
+> vazio na raiz e o script morria com `no such table: policy`. O `_bootstrap.py` resolve o
+> caminho absoluto de `api/agrishield.db` antes de qualquer import de `app`, então os scripts
+> funcionam de qualquer diretório. Exportar `AGRISHIELD_DATABASE_URL` continua mandando: quem
+> define a variável escolhe o banco.
 
 
 ## Subir a demo (`run-demo.sh`)

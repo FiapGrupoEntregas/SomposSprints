@@ -25,8 +25,11 @@ data/raw/
 # Parcial da geração do dataset (D2): reconstruível, e só serve para retomar
 data/.dataset_parcial.jsonl
 
-# Banco local (I3)
+# Banco local (I3). O WAL e o shm são arquivos de runtime do SQLite e podem carregar
+# telemetria: ficam de fora junto com o .db.
 *.db
+*.db-shm
+*.db-wal
 *.sqlite3
 
 # PlatformIO / IoT

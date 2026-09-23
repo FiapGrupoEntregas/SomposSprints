@@ -507,7 +507,7 @@ def _attach_model(
 
     # As duas metades do modelo vêm de arquivos diferentes: o pipeline do `.joblib` e os
     # metadados do `.json`. Uma escrita interrompida no retreino deixa um sem o outro — e
-    # anunciar "modelo v1, AUC-PR 0,073" sem nenhuma probabilidade seria o bloco que existe para
+    # anunciar "modelo v1, AUC-PR tal" sem nenhuma probabilidade seria o bloco que existe para
     # dizer a verdade descrevendo um modelo que não pontuou nada (com a trilha da I5 assinando a
     # decisão com ele). Por isso **o pipeline manda**: sem ele, não há bloco, campos nem versão.
     pipeline = model_service.get_model()

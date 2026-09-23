@@ -179,20 +179,34 @@ Decide onde cada máquina trabalha na semana e responde quando algo acontece.
 
 **Prioridade:** P0 · **Features:** W1, W2, W3 (P0), W7 (P1), I1 (P0).
 
-**Situação em 20/09/2026 (fim do dia): seis critérios atendidos; o sétimo continua sem medição.**
+**Situação em 21/09/2026: seis critérios atendidos; o sétimo continua sem medição.**
 
 - **Critérios 1, 2, 3, 4 e 6 — ✅**, cobertos por teste: a aba **Relevo** desenha a grade 10×10 com
   inclinação, orientação e classe; a aba **Previsão de risco** traz os 7 cards, o mapa por nível e
   o motivo com número; a Open-Meteo fora do ar devolve 503 e a tela mostra a mensagem.
+  **O critério 6 deixou de depender só de mock em 21/09:** com a cota diária da Open-Meteo
+  realmente esgotada, as rotas de clima devolveram 503 com `{"detail":"Serviço de clima
+  indisponível"}`, sem traceback, e o cliente do front traduziu em mensagem legível, enquanto
+  fazendas, relatórios, replay e auditoria seguiram respondendo
+  ([evidência](evidencias/2026-09-21-degradacao-sem-cota.md)). O que ainda não existe é o **print**
+  da tela nesse estado.
 - **Critério 5 — ✅.** A W7 foi entregue: o motor avalia **cinco perigos** por célula
   (capotamento, atolamento, raio, vento e incêndio pela regra dos 30), com os motivos empilhados
   quando mais de um dispara (`test_a_storm_day_stacks_the_reasons_of_several_hazards`,
   `test_wind_boundaries`, `test_fire_boundaries`, `test_fire_message_explains_the_slope_escalation`).
   No front, o filtro de perigos tem ícone para raio, vento e incêndio.
-- **Critério 7 — ⚠️ continua em aberto.** É de desempenho e **nunca foi medido**: não há teste de
-  tempo de resposta para o mapa (3 s sem cache, 200 ms com cache). O que existe de medição de
-  tempo é da integração MQTT (I6), que é outra coisa. **Não confunda os dois na hora de
-  apresentar.**
+- **Critério 7 — ⚠️ continua em aberto, e continua sem medição.** É de desempenho: não há teste de
+  tempo de resposta para o mapa (3 s sem cache, 200 ms com cache). **Houve uma tentativa de medir
+  em 21/09 e ela foi abortada de propósito:** naquele momento a **cota diária** da Open-Meteo
+  estava esgotada — o lote da D2 do mesmo dia a consumiu, e às 11:55 UTC os três subdomínios
+  devolviam `429` com `Daily API request limit exceeded` até para chamada avulsa
+  ([evidência](evidencias/2026-09-21-retomada-d2-e-fechamento-w11-w13.md)). Cronometrar o endpoint
+  nessa condição mediria **o tempo de a Open-Meteo recusar**, não o tempo de montar o mapa, e o
+  número resultante não valeria nem como piso nem como teto. Então **não** há medição, e este
+  critério **não** está atendido. Para medir de verdade é preciso cota livre e duas passagens (a
+  primeira com o cache vazio, a segunda com ele quente).
+- O que existe de medição de tempo no projeto é da integração MQTT (I6), que é outra coisa.
+  **Não confunda os dois na hora de apresentar.**
 
 ### US-04 — Acompanhar os equipamentos ao vivo e ser avisado de capotamento · ⚠️ parcial
 
@@ -209,8 +223,8 @@ Decide onde cada máquina trabalha na semana e responde quando algo acontece.
    contexto anteriores; inclinação de 50° por 1 s **não** dispara. (E5)
 5. O mesmo evento enviado 3 vezes é gravado **uma única vez** no banco. (I2, I3, E5)
 6. Sem dados do equipamento, a página mostra "Aguardando o equipamento conectar…", não um erro. (W5)
-7. O alerta de capotamento chega ao Telegram em ≤ 5 s, uma vez por evento. (W10, P2 — pode ficar de
-   fora sem invalidar a história)
+7. O alerta de capotamento chega ao Telegram em ≤ 5 s, uma vez por evento. (W10, P2 — **decidido
+   fora do escopo**; a própria redação previa que ficasse de fora sem invalidar a história)
 
 **Prioridade:** P0 (painel ao vivo); P1 para a detecção de capotamento (E5); P2 para o Telegram
 (W10). · **Features:** W5, I2, I3, E4 (P0), E5 (P1), W10 (P2).
@@ -223,7 +237,16 @@ status/nível/limite (W5), o firmware detecta capotamento por inclinação suste
 broker de verdade na I6**: o nível novo fica disponível para o painel 0,392 s depois de a
 inclinação mudar e o ponto entra no gráfico em 0,408 s — mais até 2 s de recarga do front, dentro
 dos 3 s e 7 s ([evidência](evidencias/2026-09-20-integracao-ponta-a-ponta.md)). Falta só a
-conferência visual na tela, com o Wokwi. O critério 7 (Telegram, W10, P2) não começou.
+conferência visual na tela, com o Wokwi.
+
+**Critério 7 (Telegram, W10, P2) — ⛔ fora do escopo, por decisão, não por falta de tempo.** A W10
+está marcada ⛔ em [feature/README.md](../feature/README.md): o envio exige **token de bot do
+Telegram**, ou seja, credencial de terceiro e canal a manter, e o time decidiu não introduzir isso
+na entrega. O alerta de capotamento **não** deixa de existir por causa disso — ele aparece fixo no
+topo do painel ao vivo, com o gráfico dos 30 s de contexto, e fica registrado em `device_event` e
+na trilha de auditoria. O que não há é a **notificação por push fora do sistema**. Isso é diferente
+de "não deu tempo": não há código de Telegram pela metade no repositório, e `app/clients/telegram.py`
+continua listado em [arquitetura.md](arquitetura.md) como **previsto, não existente**.
 
 ### US-09 — Relatórios e tendências para planejar a safra · ✅
 
@@ -269,7 +292,7 @@ real do PSR sustenta — dizer "operação" e entregar "cultura" sem explicar se
 
 Olha para a máquina depois do turno: quanto ela sofreu e por quê.
 
-### US-05 — Histórico de esforço e de eventos da máquina · ⚠️ parcial
+### US-05 — Histórico de esforço e de eventos da máquina · ✅
 
 > Como **técnico**, quero ver quanto tempo a máquina operou e quantas vezes passou do limite, para
 > priorizar a manutenção de quem sofreu mais.
@@ -286,19 +309,41 @@ Olha para a máquina depois do turno: quanto ela sofreu e por quê.
 **Prioridade:** P1 para a tendência (W12); P2 para o histórico completo (W11). · **Features:** W11
 (P2), W12 (P1), I3 (P0).
 
-**Situação em 20/09/2026 (fim do dia): parcial — o critério 4 saiu, os três primeiros não.**
+**Situação em 21/09/2026: os quatro critérios atendidos.** A W11 foi entregue e **aprovada em
+revisão** em 21/09 ([evidência](evidencias/2026-09-21-retomada-d2-e-fechamento-w11-w13.md)), o que
+fechou os três critérios que faltavam.
 
+- **Critério 1 (W11) — ✅.** `GET /api/v1/devices/{device_id}/history?days=N`
+  (`api/app/api/v1/routes/devices.py:215`) devolve, para o período escolhido, horas operando,
+  inclinação máxima, alertas de inclinação, capotamentos, ocorrências do operador, limites
+  aplicados, leituras e tempo acima do limite. No front, a seção do Passaporte em
+  `front-web/views/equipment.py` (`_render_history_section`) exibe esses números com seletor de
+  período. Teste: `test_the_route_answers_with_the_summary_and_the_timeline`,
+  `test_the_default_window_is_a_week`, `test_the_window_bounds_the_history`; front:
+  `test_passport_preview_shows_the_period_summary`.
+- **Critério 2 (W11) — ✅.** Os contadores vêm de agregação no banco e batem com o gravado:
+  `test_the_summary_counts_what_was_recorded`, `test_each_event_type_is_counted_apart` e
+  `test_the_history_and_the_report_agree`, que confere o histórico **contra o relatório da W12**.
+  A revisão de 21/09 pegou aqui um defeito real — os contadores eram derivados da lista truncada
+  em `MAX_TIMELINE_EVENTS` (100) e paravam silenciosamente em 100 — e a correção está travada por
+  teste acima do teto (`test_the_counters_ignore_the_timeline_ceiling`,
+  `test_the_counters_still_agree_with_the_report_beyond_the_ceiling`, com 240 eventos).
+- **Critério 3 (W11) — ✅.** Período sem dados devolve 200 com o resumo zerado, não erro
+  (`test_a_period_without_data_is_not_an_error`, `test_an_empty_history_answers_200`), e a tela
+  mostra o estado de espera em vez de gráfico vazio
+  (`test_passport_without_history_is_waiting_not_an_error`). Falha da chamada do histórico não
+  derruba o painel ao vivo (`test_passport_history_failure_does_not_break_the_live_panel`).
 - **Critério 4 (W12, P1) — ✅.** O relatório por equipamento existe, mostra a tendência ao longo do
   tempo e exporta CSV: `GET /api/v1/reports/equipment/{device_id}` (+ `.csv`) e a aba
   🚜 Equipamento em `front-web/views/reports.py`. Testes na API (`test_reports.py`) e no front
   (`test_equipment_report_shows_kpis_and_trend`,
   `test_equipment_report_without_telemetry_is_not_an_error`).
-- **Critérios 1, 2 e 3 (W11, P2) — ⬜.** A W11 (histórico completo do equipamento, prévia do
-  Passaporte Digital) **não começou**, e é P2. A telemetria e os eventos já ficam gravados no
-  SQLite (I3), então o que falta é agregar e exibir, não coletar.
 
-A história entrega valor parcial hoje: o técnico já consegue ver a tendência e exportar, mas não
-o histórico consolidado de esforço por máquina.
+**O que esta história continua não prometendo:** o que a W11 entrega é a **prévia** do Passaporte
+Digital — resumo do período e linha do tempo —, não o Passaporte completo, que segue fora do
+escopo. A própria resposta carrega essa nota (`roadmap_note`, exibida na tela e verificada por
+`test_the_history_says_what_it_is_not_yet` e `test_passport_roadmap_note_comes_from_the_api`).
+**Falta o print** desta tela (entregável 5).
 
 ### US-06 — Ver as condições no momento de cada evento · ⚠️ parcial
 
@@ -375,7 +420,7 @@ isso precisa estar à vista de quem for precificar
 
 **Falta:** o **print** da tela (item 9 da [lista de prints](evidencias/prints/README.md)).
 
-### US-08 — Probabilidade de sinistro com dados reais e contexto do evento · ⚠️ parcial
+### US-08 — Probabilidade de sinistro com dados reais e contexto do evento · ✅
 
 > Como **analista**, quero a probabilidade de sinistro calculada sobre dados históricos reais e o
 > contexto objetivo do evento, para decidir aceitação e conduzir a regulação do sinistro.
@@ -401,24 +446,38 @@ isso precisa estar à vista de quem for precificar
 **Prioridade:** P0 (D1, D2, D3); P1 para a exibição do score híbrido (W13) e o replay (W9). ·
 **Features:** D1, D2, D3 (P0), W13, W9 (P1).
 
-**Situação em 20/09/2026 (fim do dia): sete dos oito critérios atendidos.** D3, W13 e W9 foram
-entregues no dia.
+**Situação em 21/09/2026: os oito critérios atendidos.** O critério 3, único em aberto em 20/09,
+fechou quando a D2 foi retomada e consolidada com **2.256 linhas**; o modelo foi retreinado sobre
+elas e o resultado da D3 **inverteu** (ver o quadro no fim desta história).
 
 - **Critérios 1 e 2 — ✅.** **1.525.473 apólices reais** do PSR/SISSER na tabela `policy`, com
   relatório de qualidade por motivo de descarte, e teste que falha se qualquer coluna pessoal
   chegar ao banco (`test_colunas_pessoais_nunca_chegam_ao_banco`).
-- **Critério 3 — ⚠️ o único em aberto.** O dataset tem **menos de 2.000 linhas**: a geração parou
-  na **cota diária da Open-Meteo**, não por falta de código. A taxa de sinistro real foi
-  preservada na amostragem e o desbalanceamento está declarado; o teste de não vazamento
-  climático existe. O número exato e a explicação de qual API acabou primeiro estão em
-  [dados-e-modelo.md](dados-e-modelo.md#dataset-de-treino-d2) e na ficha
-  `data/dataset_treino.json`. Retomar **não** exige refazer nada.
+- **Critério 3 — ✅ desde 21/09.** O dataset tem **2.256 linhas**, acima das 2.000 exigidas
+  (`data/dataset_treino.json`, gerada pelo script). Faltam 244 para as 2.500 pedidas: o lote foi
+  encerrado quando a **cota diária** da Open-Meteo se esgotou — confirmado às 11:55 UTC por `curl`
+  avulso nos **três** subdomínios (`api`, `archive-api` e `historical-forecast-api`), todos
+  devolvendo `{"error":true,"reason":"Daily API request limit exceeded..."}` — e foi
+  **consolidado** com o que já estava pronto. O log só registra o código `429`, não o corpo da
+  resposta, e por isso não distingue sozinho cota de ritmo; o diagnóstico veio do `curl`. A causa
+  de fundo é o **peso** da chamada: requisição que cobre mais de duas semanas conta como várias, e
+  a janela aqui é a vigência da apólice (~21 chamadas por requisição de clima), o que derruba o
+  teto prático para ~465 apólices por dia. Registro completo em
+  [evidencias/2026-09-21-retomada-d2-e-fechamento-w11-w13.md](evidencias/2026-09-21-retomada-d2-e-fechamento-w11-w13.md). Como a amostra é embaralhada antes de ser
+  processada, parar no meio dá um subconjunto aleatório dos estratos, não um recorte enviesado; a
+  fidelidade à taxa de sinistro real do PSR, aliás, **melhorou** (desvio médio por safra de 2,80
+  pp para 0,90 pp). A taxa de sinistro real foi preservada, o desbalanceamento está declarado
+  (390 positivos, 17,3%) e o teste de não vazamento climático existe (`test_dataset.py`).
+  Composição por ano, UF e cultura em
+  [dados-e-modelo.md](dados-e-modelo.md#dataset-de-treino-d2); execução em
+  [evidencias/2026-09-21-retomada-d2-e-fechamento-w11-w13.md](evidencias/2026-09-21-retomada-d2-e-fechamento-w11-w13.md).
 - **Critério 4 — ✅.** `scripts/train_model.py` imprime **baseline de regras × modelo na mesma
   tabela**, e as métricas publicadas são exatamente as que o script gerou: há teste garantindo
   que os metadados do artefato contêm precisamente as métricas do treino
   (`test_metadados_tem_exatamente_as_metricas_do_treino`) e outro que verifica que o próprio
   treino reporta se superou ou não o baseline (`test_train_reporta_se_supera_o_baseline`).
-  **Nenhum número escrito à mão.**
+  **Nenhum número escrito à mão** — e a inversão de 21/09 confirmou isso na prática: o artefato
+  mudou, os documentos precisaram ser reescritos e nenhum número do código precisou ser tocado.
 - **Critério 5 — ✅, e agora de verdade.** Antes era verdadeiro por vacuidade (não havia carga de
   modelo). Hoje existe carga, e existe teste: sem arquivo, `load_model` devolve `None` **com
   aviso no log** (`test_load_model_sem_arquivo_devolve_none_com_aviso`); com arquivo corrompido,
@@ -434,14 +493,26 @@ entregues no dia.
   informa sempre a precisão da localização (todos em `municipio`, porque nenhuma notícia trouxe
   coordenada). O veredito sai em duas leituras — no ponto e na grade de vizinhança.
 
-> **O resultado do modelo, dito como é:** ele **não superou o baseline por regras** no conjunto de
-> teste, e o bootstrap pareado mostra que os dois são indistinguíveis com esta amostra — não seria
-> possível demonstrar superioridade nem se ela existisse. A frase que aparece na tela é montada
-> **a partir do artefato**, em tempo de execução, e há teste que exige que ela diga isso
-> (`test_the_note_says_the_model_did_not_beat_the_rules`) e outro que prova que um retreino muda o
-> bloco **sem tocar no código**
-> (`test_a_retrained_model_changes_the_block_without_touching_the_code`). É por isso que este
-> documento não repete a métrica: o número tem uma fonte só, e é o artefato.
+> **O resultado do modelo, dito como é (atualizado em 21/09):** retreinado sobre as 2.256 linhas,
+> ele **supera o baseline por regras** no teste de 2024 — AUC-PR 0,144 contra 0,074, diferença
+> +0,070, IC 95% [+0,003, +0,169]. **Em 20/09 o documento afirmava o contrário, com números.** A
+> inversão foi auditada antes de ser publicada, e as três ressalvas andam junto da afirmação:
+> **(1)** o teste tem **26 positivos**, abaixo do mínimo de 30 que o próprio `train_model.py`
+> exige para conclusão firme; **(2)** o extremo inferior do IC é +0,003, quase tocando o zero;
+> **(3)** a virada veio da **troca do conjunto de teste**, não de o modelo ter melhorado — o
+> artefato de 20/09, sem retreino nenhum, já venceria no teste novo, e a fatia antiga (8 sinistros
+> em 155) é que era atípica. Some-se que o baseline **nunca discriminou** o alvo `target_claim` em
+> safra nenhuma: as regras modelam chuva e tempestade, e esse alvo é dominado por seca e geada
+> (74,4% das indenizações de 2024 foram de seca). Medido no alvo que as regras tratam
+> (`target_rain_claim`), quem discrimina é o baseline. **Por isso o alerta ao operador continua
+> vindo das regras** ([regras-de-risco.md §11](regras-de-risco.md)). A auditoria completa está em
+> [dados-e-modelo.md](dados-e-modelo.md#resultados-do-modelo-d3).
+>
+> A frase que aparece na tela é montada **a partir do artefato**, em tempo de execução, e há teste
+> que prova que um retreino muda o bloco **sem tocar no código**
+> (`test_a_retrained_model_changes_the_block_without_touching_the_code`) — foi exatamente o que
+> aconteceu em 21/09. É por isso que este documento não repete a tabela de métricas: o número tem
+> uma fonte só, e é o artefato.
 >
 > **Sobre `MODEL_VERSION = None` em `api/app/core/versions.py`:** não é sinal de modelo ausente.
 > É a versão usada quando a decisão foi tomada **sem** modelo. A versão real viaja com a decisão,
@@ -492,8 +563,9 @@ Situação: ⬜ não implementado · ⚠️ parcial · ✅ pronto com evidência
 Arquivos em *itálico* ainda **não existem** — são o caminho previsto pela feature.
 Detalhe de cada ID em [feature/README.md](../feature/README.md).
 
-> **Conferida em 20/09/2026**, fim do dia, contra o código, arquivo por arquivo — depois das
-> entregas de W6, W7, W8, W9, W12, W13 e D3.
+> **Conferida em 21/09/2026**, contra o código, arquivo por arquivo — depois das entregas de W6,
+> W7, W8, W9, W12, W13, D3 e da aprovação de **W11** e **W13** na revisão de 21/09, com a D2
+> consolidada em 2.256 linhas e o modelo retreinado.
 >
 > **Contagens de teste foram retiradas desta matriz de propósito.** Elas envelheciam a cada
 > entrega e davam a impressão de precisão que não se sustentava um dia depois. O que fica é o
@@ -506,12 +578,12 @@ Detalhe de cada ID em [feature/README.md](../feature/README.md).
 |---|---|---|---|---|---|---|
 | US-01 | Operador | P0 | E1, E2, E3, W4, E7 (todas feitas) | `iot/src/main.ino` · `api/app/services/limits.py` · `api/app/api/v1/routes/devices.py` · `front-web/views/equipment.py` | `api/tests/test_limits.py`, `test_devices_limit_route.py`, `test_limit_publisher.py`, `test_periodic_publisher.py`; front: `test_limit_card_shows_the_day_limit_and_the_dry_soil_reference`, `test_publish_button_sends_the_limit_and_records_the_last_send`. Firmware: compila com `pio run`, **sem captura do Wokwi** (T6 pendente) | ⚠️ |
 | US-02 | Operador | P0 | W3, I1, W6 (todas feitas) | `api/app/services/risk.py`, `recommendations.py` · `api/app/api/v1/routes/farms.py` · `front-web/views/risk_map.py` | `api/tests/test_risk_rules.py`, `test_risk_route.py`, `test_recommendations.py` (janelas, mínimo de 2 h, 06–18h, dia sem restrição, direção pelas células vermelhas); front: `test_risk_tab_shows_day_strip_panel_and_chart` | ✅ |
-| US-03 | Gestor | P0 | W1, W2, W3, I1, W7 (todas feitas) | `api/app/data/farms.json` · `app/services/farms.py`, `terrain.py`, `weather.py`, `risk.py` · `front-web/views/risk_map.py`, `components/cell_map.py` | `api/tests/test_farms.py`, `test_terrain.py`, `test_terrain_route.py`, `test_risk_rules.py` (5 perigos), `test_risk_route.py`, `test_open_meteo_client.py`; front: testes de mapa e previsão em `test_pages.py`. **Desempenho (critério 7) continua não medido** | ⚠️ |
-| US-04 | Gestor | P0 | W5, I2, I3, E4, E5, I6 (feitas); **W10 (P2, não começou)** | `iot/src/main.ino` · `api/app/mqtt/bridge.py`, `handlers.py` · `app/models.py`, `app/db.py` · `app/repositories/devices.py` · `front-web/views/equipment.py` | `api/tests/test_mqtt_bridge.py`, `test_repositories.py`, `test_devices_telemetry_routes.py`, `test_app_lifespan.py`; front: `test_live_panel_shows_status_banner_metrics_and_events`, `test_recent_rollover_pins_the_alert_with_the_context_chart`; **ponta a ponta com broker real:** `api/tests/e2e/` | ⚠️ |
-| US-05 | Técnico | P1 | W12 (feita); **W11 (P2, não começou)**; I3 (feita) | `api/app/services/reports.py` · `front-web/views/reports.py` · *`api/app/services/history.py`* | W12: `api/tests/test_reports.py`; front: `test_equipment_report_shows_kpis_and_trend`, `test_equipment_report_without_telemetry_is_not_an_error`. W11: nenhuma | ⚠️ |
+| US-03 | Gestor | P0 | W1, W2, W3, I1, W7 (todas feitas) | `api/app/data/farms.json` · `app/services/farms.py`, `terrain.py`, `weather.py`, `risk.py` · `front-web/views/risk_map.py`, `components/cell_map.py` | `api/tests/test_farms.py`, `test_terrain.py`, `test_terrain_route.py`, `test_risk_rules.py` (5 perigos), `test_risk_route.py`, `test_open_meteo_client.py`; front: testes de mapa e previsão em `test_pages.py`. **Desempenho (critério 7) continua não medido** — a tentativa de 21/09 foi abortada porque a Open-Meteo estava em `429` e a medição captaria a recusa, não o mapa | ⚠️ |
+| US-04 | Gestor | P0 | W5, I2, I3, E4, E5, I6 (feitas); **W10 (P2, ⛔ fora do escopo — exige token de bot)** | `iot/src/main.ino` · `api/app/mqtt/bridge.py`, `handlers.py` · `app/models.py`, `app/db.py` · `app/repositories/devices.py` · `front-web/views/equipment.py` | `api/tests/test_mqtt_bridge.py`, `test_repositories.py`, `test_devices_telemetry_routes.py`, `test_app_lifespan.py`; front: `test_live_panel_shows_status_banner_metrics_and_events`, `test_recent_rollover_pins_the_alert_with_the_context_chart`; **ponta a ponta com broker real:** `api/tests/e2e/` | ⚠️ |
+| US-05 | Técnico | P1 | W12, **W11** e I3 (todas feitas) | `api/app/services/reports.py`, `history.py` · `api/app/api/v1/routes/devices.py` (`/history`) · `api/app/schemas/history.py` · `front-web/views/reports.py`, `equipment.py` | W12: `api/tests/test_reports.py`; front: `test_equipment_report_shows_kpis_and_trend`, `test_equipment_report_without_telemetry_is_not_an_error`. **W11: `api/tests/test_history.py`** (contadores contra o banco, concordância com o relatório da W12 **acima** do teto da linha do tempo, período vazio = 200, 404 e 422 da rota); front: `test_passport_preview_shows_the_period_summary`, `test_passport_without_history_is_waiting_not_an_error`, `test_passport_history_failure_does_not_break_the_live_panel`. **Falta o print** | ✅ |
 | US-06 | Técnico | P1 | E4, E5, E6, E8, W5, I2, I3, I6 (feitas) | `iot/src/main.ino` (`readEnv`, contexto de 30 s, botão) · `api/app/schemas/mqtt.py` · `front-web/views/equipment.py` | `api/tests/test_mqtt_bridge.py`; **campo a campo dispositivo × API:** `api/tests/e2e/` + [evidência](evidencias/2026-09-20-integracao-ponta-a-ponta.md). Falta só a conferência visual API × tela | ⚠️ |
 | US-07 | Analista | P1 | W2, W8 (feitas) | `api/app/services/terrain.py`, `underwriting.py` · `api/app/api/v1/routes/farms.py` · `front-web/views/underwriting.py` | `api/tests/test_terrain.py`, `test_underwriting.py` (caso 23/40/8/15 → 48,5 classe B; faixa 0–100; plana = A, café = B/C); front: `test_underwriting_shows_class_score_and_drivers`, `test_underwriting_shows_the_calibration_note_in_the_open`, `test_underwriting_portfolio_is_sorted_by_score`. **Falta o print** | ✅ |
-| US-08 | Analista | P0 | D1, D3, W13, W9 (feitas); D2 (dataset parcial — cota da Open-Meteo) | `scripts/download_psr.py`, `build_psr_sample.py`, `load_psr.py`, `build_dataset.py`, `train_model.py` · `api/app/services/psr_ingest.py`, `dataset.py`, `model.py`, `model_scoring.py`, `replay.py` · `api/app/data/model/risk_model_v1.joblib` + `.json` · `data/sample/psr_amostra.csv`, `data/dataset_treino.parquet` | D1: `test_psr_ingest.py`, incl. `test_colunas_pessoais_nunca_chegam_ao_banco`; 1.525.473 linhas em `policy`. D2: `test_dataset.py`, incl. não vazamento — **dataset abaixo das 2.000 linhas do critério 3**. D3: `test_model.py` (baseline × modelo, metadados = métricas do treino, fallback sem artefato). W13: `test_model_scoring.py`, incl. `test_the_note_says_the_model_did_not_beat_the_rules`. W9: `test_replay.py`, `test_replay_cases.py` | ⚠️ |
+| US-08 | Analista | P0 | D1, D2, D3, W13, W9 (todas feitas) | `scripts/download_psr.py`, `build_psr_sample.py`, `load_psr.py`, `build_dataset.py`, `train_model.py` · `api/app/services/psr_ingest.py`, `dataset.py`, `model.py`, `model_scoring.py`, `replay.py` · `api/app/data/model/risk_model_v1.joblib` + `.json` · `data/sample/psr_amostra.csv`, `data/dataset_treino.parquet` | D1: `test_psr_ingest.py`, incl. `test_colunas_pessoais_nunca_chegam_ao_banco`; 1.525.473 linhas em `policy`. D2: `test_dataset.py`, incl. não vazamento — **dataset com 2.256 linhas, acima das 2.000 do critério 3**. D3: `test_model.py` (baseline × modelo, metadados = métricas do treino, fallback sem artefato). W13: `test_model_scoring.py`, incl. o teste de que um retreino muda o bloco sem tocar no código. W9: `test_replay.py`, `test_replay_cases.py`. **Falta o print** do cartão do modelo, que precisa ser capturado **depois** do retreino de 21/09 | ✅ |
 | US-09 | Gestor | P1 | W12 (feita); I3, D1 (feitas) | `api/app/services/reports.py` · `api/app/api/v1/routes/reports.py` · `front-web/views/reports.py` | `api/tests/test_reports.py` (três recortes, CSV com BOM e vírgula decimal, período vazio não é erro); front: `test_reports_show_the_purpose_of_each_report`, `test_region_report_shows_real_psr_numbers`, `test_crop_report_shows_rate_and_top_event`. **Falta o print** | ✅ |
 | US-10 | Analista | P0 | I5, I3, W13, W9 (feitas) | `api/app/core/security.py`, `logging.py`, `versions.py` · `app/repositories/audit.py` · `app/api/v1/routes/audit.py` · `app/models.py` (`decision_log`, `event_integrity`) | `test_security.py`, `test_audit.py`, `test_logging.py`, `test_versions.py` — cobrem os 5 critérios; `test_model_scoring.py::test_the_model_version_reaches_the_audit_trail` fecha o critério 1. **Falta o print** | ✅ |
 
@@ -523,17 +595,17 @@ Detalhe de cada ID em [feature/README.md](../feature/README.md).
 | Recomendações e janelas seguras (W6) | Janela mínima de 2 h, limite de 06–18h, dia sem restrição com texto próprio, direção tirada só das células vermelhas, aviso de que a janela não libera área vermelha | `api/tests/test_recommendations.py` |
 | Integração MQTT e banco (I2, I3, W4, W5) | Validação de payload, deduplicação por `event_id`, retenção de 7 dias, API sobe sem broker, publicação retained | `api/tests/test_mqtt_bridge.py`, `test_repositories.py`, `test_devices_*.py`, `test_limit_publisher.py`, `test_periodic_publisher.py`, `test_app_lifespan.py` |
 | Segurança e rastreabilidade (I5) | 401 sem chave, chave mascarada no log, `X-Request-ID` ponta a ponta, `decision_log` com versão de regra e de modelo, hash do payload cru | `api/tests/test_security.py`, `test_audit.py`, `test_logging.py`, `test_versions.py` |
-| Dados reais (D1, D2) | Teste que falha se coluna pessoal chegar ao banco; teste de não vazamento climático; 1.525.473 linhas carregadas em `policy` | `api/tests/test_psr_ingest.py`, `test_dataset.py`, `data/README.md` |
-| Modelo e score híbrido (D3, W13) | Artefato treinado e versionado; metadados contêm exatamente as métricas do treino; sem artefato ou com artefato corrompido a API responde só com regras; o modelo **nunca** altera nível, limite ou motivos; a ressalva de que ele **não superou o baseline** é montada a partir do artefato e há teste exigindo que ela diga isso | `api/app/data/model/risk_model_v1.joblib` + `.json`, `api/tests/test_model.py`, `test_model_scoring.py`, [dados-e-modelo.md](dados-e-modelo.md#resultados-do-modelo-d3) |
+| Dados reais (D1, D2) | Teste que falha se coluna pessoal chegar ao banco; teste de não vazamento climático; 1.525.473 linhas carregadas em `policy`; dataset da D2 com **2.256 linhas** (244 abaixo das 2.500 pedidas, acima das 2.000 exigidas), com a execução registrada em [evidencias/2026-09-21-retomada-d2-e-fechamento-w11-w13.md](evidencias/2026-09-21-retomada-d2-e-fechamento-w11-w13.md) | `api/tests/test_psr_ingest.py`, `test_dataset.py`, `data/README.md` |
+| Modelo e score híbrido (D3, W13) | Artefato treinado e versionado (**retreinado em 21/09** sobre 2.256 linhas); metadados contêm exatamente as métricas do treino; sem artefato ou com artefato corrompido a API responde só com regras; o modelo **nunca** altera nível, limite ou motivos; a ressalva de comparação com o baseline é montada a partir do artefato — e a inversão de 21/09 (o modelo passou a superar) apareceu no cartão **sem alteração de código** | `api/app/data/model/risk_model_v1.joblib` + `.json`, `api/tests/test_model.py`, `test_model_scoring.py`, [dados-e-modelo.md](dados-e-modelo.md#resultados-do-modelo-d3) |
 | Replay de acidentes reais (W9) | 5 casos noticiados com link da fonte e precisão de localização declarada; veredito no ponto e na grade; dois placares obtidos de forma independente e comparados | `api/app/data/replay_cases.json`, `api/tests/test_replay.py`, `test_replay_cases.py`, [evidencias/replay-w9-comparacao-placares.md](evidencias/replay-w9-comparacao-placares.md) |
 | Subscrição e relatórios (W8, W12) | Score determinístico com o caso de aceite conferido na unha; CSV que abre no Excel em pt-BR; período sem dados vira aviso, não erro | `api/tests/test_underwriting.py`, `test_reports.py` |
 | Telas (as seis) | Testes de front com a API mockada, incluindo "API fora do ar mostra erro, não traceback", "o front não chama a Open-Meteo" e "o relatório nunca vaza `proposal_id`" | `front-web/tests/test_pages.py`, `test_api_client.py` |
 | Firmware E1–E8 | Compila com `pio run` (SUCCESS em 20/09); lógica de nível, histerese, capotamento e contexto no código | `iot/src/main.ino` |
 | Conferência dos ângulos no Wokwi (E1, critério de erro ≤ 0,5°) | **Não existe** — depende da tarefa T6 do time | — |
 | Validação ponta a ponta com broker (I6) | Testes `e2e` em 20/09/2026 (marca `e2e`, fora da CI) com API, broker e simulador de verdade: 100/100 na rajada, payload inválido descartado, capotamento gravado uma vez com contexto e auditoria, LWT e reconexão, tempos da W4 e da W5 medidos | `api/tests/e2e/`, `scripts/simulate_device.py`, [evidencias/2026-09-20-integracao-ponta-a-ponta.md](evidencias/2026-09-20-integracao-ponta-a-ponta.md) |
-| Desempenho do mapa (US-03, critério 7) | **Não medido.** Não confundir com os tempos da I6, que são da integração MQTT | — |
+| Desempenho do mapa (US-03, critério 7) | **Não medido.** Tentativa em 21/09 abortada: a cota diária da Open-Meteo estava esgotada e a medição captaria a recusa, não o mapa. Não confundir com os tempos da I6, que são da integração MQTT | — |
 | Fontes dos limiares de risco (T1) | **Não existem.** Os limiares de [regras-de-risco.md](regras-de-risco.md) são valores iniciais da v1, declarados como tal, ainda sem referência publicada | [regras-de-risco.md](regras-de-risco.md#fontes-dos-limiares-t1) |
-| Prints de tela | **Não existem.** A pasta e a lista do que capturar existem; nenhuma imagem foi tirada | [evidencias/prints/README.md](evidencias/prints/README.md) |
+| Prints de tela | **Não existem.** A pasta e a lista do que capturar existem; nenhuma imagem foi tirada. O print nº 11 (cartão do modelo) só pode ser capturado **depois** do retreino de 21/09 | [evidencias/prints/README.md](evidencias/prints/README.md) |
 
 ## Cobertura: features sem história e histórias sem feature
 
@@ -553,12 +625,21 @@ Declarado para não gerar expectativa errada na banca:
 - **Não** há hardware embarcado real: o ESP32 roda simulado no Wokwi, com o slider do MPU6050 no
   lugar da inclinação real da máquina.
 - O modelo preditivo **existe e está treinado**, mas com sinistros de **seguro agrícola** (PSR),
-  não com sinistros de máquinas agrícolas — é uma aproximação, e é provavelmente por isso que ele
-  **não supera o baseline por regras**. O resultado está publicado em
-  [dados-e-modelo.md](dados-e-modelo.md#resultados-do-modelo-d3), com o bootstrap que mostra que
-  a amostra também é pequena demais para concluir o contrário. **A probabilidade que aparece na
+  não com sinistros de máquinas agrícolas — é uma aproximação. Desde o retreino de 21/09 ele
+  **supera o baseline por regras** no teste de 2024, e isso **não** deve ser apresentado como
+  validação: são 26 positivos no teste (abaixo dos 30 que o próprio script exige), o IC 95% da
+  diferença quase toca o zero, e a virada veio da troca do conjunto de teste, não de o modelo ter
+  melhorado. Além disso, a vitória é no alvo "qualquer indenização", dominado por seca e geada —
+  **não** está demonstrado que o modelo preveja melhor o perigo que o alerta trata (chuva e
+  tempestade), onde quem discrimina é o baseline. O resultado e a auditoria estão em
+  [dados-e-modelo.md](dados-e-modelo.md#resultados-do-modelo-d3). **A probabilidade que aparece na
   tela serve para comparar dias e fazendas entre si, não como probabilidade calibrada de sinistro
   naquele dia** — a própria API diz isso no texto que acompanha o número.
 - As fazendas são de **demonstração**, com bbox escolhidas pelo time; não há integração com CAR nem
   com a carteira real da Sompo.
-- O Passaporte Digital do equipamento aparece só como prévia (US-05 / W11), não como produto.
+- O Passaporte Digital do equipamento aparece só como **prévia** (US-05 / W11): resumo do período
+  e linha do tempo, com a própria resposta da API declarando o que ainda não é (`roadmap_note`).
+  Não é o produto completo.
+- O **alerta por Telegram** (W10) **não existe** e não vai existir nesta entrega: foi decidido
+  **fora do escopo** por exigir token de bot. O alerta de capotamento aparece no painel e na
+  auditoria, mas não sai do sistema por push.

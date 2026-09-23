@@ -136,13 +136,52 @@ def test_only_three_drivers_are_exposed() -> None:
 # --- A ressalva viaja com o número ---------------------------------------------------------------
 
 
-def test_the_note_says_the_model_did_not_beat_the_rules() -> None:
-    """Cuidado nº 1 da W13: a honestidade tem que estar no dado, não só no slide."""
+def test_the_note_reports_a_defeat_when_the_artefact_says_so() -> None:
+    """Cuidado nº 1 da W13: a honestidade tem que estar no dado, não só no slide.
+
+    O nome não afirma nada sobre o modelo **entregue** — a fixture é do ramo perdedor. O artefato
+    de 21/09 supera o baseline, e quem trava esse ramo é
+    `test_the_note_does_not_turn_a_win_into_a_reason_to_keep_the_rules`.
+    """
     info = model_scoring.model_info(metadata_sample())
 
     assert info is not None
     assert "não superou" in info.note
     assert "as regras continuam sendo a base do alerta" in info.note
+
+
+def test_the_note_does_not_turn_a_win_into_a_reason_to_keep_the_rules() -> None:
+    """Espelho do teste acima, com o artefato de 21/09, que **supera** o baseline.
+
+    A conclusão é a mesma dos dois lados — o alerta é das regras —, mas aqui ela não decorre da
+    comparação: emendar as duas com "então" seria um não-sequitur no print da banca. O motivo
+    que entra é o do alvo (regras-de-risco §11, item 3).
+    """
+    info = model_scoring.model_info(
+        metadata_sample(
+            beats_baseline=True,
+            split_sizes={"train": 1447, "validation": 504, "test": 305},
+            test={
+                "regressao_logistica": {
+                    "n": 305,
+                    "positives": 26,
+                    "pr_auc": 0.1441,
+                    "roc_auc": 0.6545,
+                },
+                "baseline_regras": {"n": 305, "positives": 26, "pr_auc": 0.0744, "roc_auc": 0.4041},
+            },
+        )
+    )
+
+    assert info is not None
+    # (a) a métrica certa, do artefato, dos dois lados da comparação
+    assert "superou o baseline por regras (AUC-PR 0,144 contra 0,074)" in info.note
+    assert "305 linhas e 26 sinistros" in info.note
+    # (b) as regras seguem sendo a base do alerta
+    assert "regras continuam sendo a base do alerta ao operador" in info.note
+    # (c) e isso **não** é apresentado como consequência da vitória
+    assert "então" not in info.note
+    assert "mas num alvo mais amplo" in info.note
 
 
 def test_the_note_carries_the_metric_and_the_sample_size() -> None:
@@ -199,6 +238,87 @@ def test_the_features_cover_everything_the_model_declares() -> None:
     numeric, categorical = declared_features()
 
     assert set(numeric + categorical) <= set(features)
+
+
+# Uma grade 3 × 3 com desnível para todos os lados: dá inclinação, amplitude e mais de uma classe.
+TRAINING_ELEVATIONS = [980.0, 995.0, 1010.0, 970.0, 1000.0, 1030.0, 950.0, 985.0, 1015.0]
+
+# As variáveis de relevo que o treino (D2) e a pontuação (W13) calculam **da mesma forma**.
+SHARED_TERRAIN_FEATURES = (
+    "slope_mean_deg",
+    "slope_max_deg",
+    "elevation_mean_m",
+    "elevation_range_m",
+    "pct_lowland",
+    "pct_exposed",
+)
+
+
+def test_the_terrain_features_match_the_training_definitions() -> None:
+    """Conferir só os **nomes** das variáveis não basta: a definição também tem de bater.
+
+    Na mesma grade 3 × 3 e na mesma caixa da D2, cada variável de relevo que a pontuação monta
+    precisa dar o mesmo número que `dataset.terrain_features` gravou no treino. Foi assim que
+    passaram despercebidos um ponto médio no lugar da média e a moda no lugar da célula central.
+    """
+    from app.services import dataset
+
+    farm = make_farm()
+    # A fazenda de teste já ocupa a caixa de ±0,005° que a D2 usa por apólice; reusar a caixa da
+    # própria D2 tira da frente qualquer diferença de arredondamento na geometria (e portanto na
+    # inclinação), e sobra só o que este teste quer travar: a definição de cada variável.
+    bbox = dataset.property_bbox(farm.center.lat, farm.center.lon)
+    assert (bbox.north, bbox.south, bbox.west, bbox.east) == pytest.approx(
+        (farm.bbox.north, farm.bbox.south, farm.bbox.west, farm.bbox.east)
+    )
+
+    terrain = build_terrain(
+        farm.model_copy(update={"bbox": bbox}), TRAINING_ELEVATIONS, n=dataset.TERRAIN_GRID_SIZE
+    )
+    features = model_scoring.build_features(farm, terrain, make_day())
+    training = dataset.terrain_features(farm.center.lat, farm.center.lon, TRAINING_ELEVATIONS)
+
+    for key in SHARED_TERRAIN_FEATURES:
+        # A tolerância é só o arredondamento das células (W2); a definição tem de ser a mesma.
+        assert features[key] == pytest.approx(training[key], abs=0.1), key
+    assert features["aspect_label"] == training["aspect_label"]
+
+
+def test_the_definitions_hold_on_the_production_grid() -> None:
+    """O que muda em produção é a **resolução**, não a definição.
+
+    O treino descreve a apólice numa grade 3 × 3 e aqui o relevo é a grade 10 × 10 do W2 — os
+    números mudam, mas cada variável continua sendo a mesma conta: média da grade, orientação da
+    célula central, % de baixada e de topo exposto.
+    """
+    farm = make_farm()
+    terrain = build_terrain(farm, elevation())
+    features = model_scoring.build_features(farm, terrain, make_day())
+
+    cells = terrain.cells
+    center = terrain.grid_size // 2
+    central = next(cell for cell in cells if cell.row == center and cell.col == center)
+
+    assert features["elevation_mean_m"] == pytest.approx(
+        sum(cell.elevation_m for cell in cells) / len(cells)
+    )
+    assert features["aspect_label"] == central.aspect_label.value
+
+
+def test_the_saturated_soil_threshold_comes_from_the_rules() -> None:
+    """O limiar de 72 h é o do módulo das regras, não uma cópia local (ver `model.py`)."""
+    from app.services.risk import SOIL_SATURATED_RAIN_72H_MM
+
+    farm = make_farm()
+    terrain = build_terrain(farm, elevation())
+
+    just_below = make_day(rain_72h_mm=SOIL_SATURATED_RAIN_72H_MM - 0.1)
+    exactly = make_day(rain_72h_mm=SOIL_SATURATED_RAIN_72H_MM)
+    above = make_day(rain_72h_mm=SOIL_SATURATED_RAIN_72H_MM + 0.1)
+
+    assert model_scoring.build_features(farm, terrain, just_below)["days_rain72h_ge30"] == 0
+    assert model_scoring.build_features(farm, terrain, exactly)["days_rain72h_ge30"] == 1
+    assert model_scoring.build_features(farm, terrain, above)["days_rain72h_ge30"] == 1
 
 
 # --- O modelo não decide o nível -----------------------------------------------------------------
@@ -425,7 +545,7 @@ def test_an_unreadable_pipeline_leaves_the_audit_without_a_model_version(
     assert rows[0].rule_version.startswith("regras-de-risco/")
 
 
-def test_missing_metadata_with_a_working_pipeline_still_scores(
+def test_a_pipeline_without_metadata_does_not_score(
     api: Callable[..., TestClient], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """O contrário também precisa ser coerente: sem `.json`, não há bloco nem versão por dia."""

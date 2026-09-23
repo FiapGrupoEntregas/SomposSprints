@@ -1,9 +1,9 @@
 {
   "version": "v1",
-  "trained_at": "2026-09-20T15:13:28+00:00",
+  "trained_at": "2026-09-21T11:28:42+00:00",
   "dataset": {
     "path": "/home/ntl/workspace/SomposSprints/data/dataset_treino.parquet",
-    "rows": 1184
+    "rows": 2256
   },
   "split": {
     "train": "<= 2021",
@@ -13,9 +13,9 @@
     ],
     "test": 2024,
     "sizes": {
-      "train": 775,
-      "validation": 254,
-      "test": 155
+      "train": 1447,
+      "validation": 504,
+      "test": 305
     }
   },
   "features": {
@@ -61,135 +61,150 @@
   ],
   "target": "target_claim",
   "chosen": "regressao_logistica",
-  "threshold": 0.1418,
+  "threshold": 0.3359,
   "split_sizes": {
-    "train": 775,
-    "validation": 254,
-    "test": 155
+    "train": 1447,
+    "validation": 504,
+    "test": 305
   },
   "validation": {
     "baseline_regras": {
-      "n": 254,
-      "positives": 29,
-      "positive_rate": 0.1142,
-      "roc_auc": 0.5208,
-      "pr_auc": 0.1177,
-      "threshold": 0.0829,
-      "recall": 0.8966,
-      "precision": 0.13,
-      "true_negatives": 51,
-      "false_positives": 174,
-      "false_negatives": 3,
-      "true_positives": 26
+      "n": 504,
+      "positives": 62,
+      "positive_rate": 0.123,
+      "roc_auc": 0.4994,
+      "pr_auc": 0.1262,
+      "threshold": 0.0627,
+      "recall": 0.9677,
+      "precision": 0.1351,
+      "true_negatives": 58,
+      "false_positives": 384,
+      "false_negatives": 2,
+      "true_positives": 60
     },
     "regressao_logistica": {
-      "n": 254,
-      "positives": 29,
-      "positive_rate": 0.1142,
-      "roc_auc": 0.5445,
-      "pr_auc": 0.1236,
-      "threshold": 0.1418,
-      "recall": 1.0,
-      "precision": 0.1239,
-      "true_negatives": 20,
-      "false_positives": 205,
-      "false_negatives": 0,
-      "true_positives": 29
+      "n": 504,
+      "positives": 62,
+      "positive_rate": 0.123,
+      "roc_auc": 0.5884,
+      "pr_auc": 0.1506,
+      "threshold": 0.3359,
+      "recall": 0.8871,
+      "precision": 0.1536,
+      "true_negatives": 139,
+      "false_positives": 303,
+      "false_negatives": 7,
+      "true_positives": 55
     },
     "floresta_aleatoria": {
-      "n": 254,
-      "positives": 29,
-      "positive_rate": 0.1142,
-      "roc_auc": 0.5451,
-      "pr_auc": 0.1258,
-      "threshold": 0.3521,
-      "recall": 0.9655,
-      "precision": 0.1284,
-      "true_negatives": 35,
-      "false_positives": 190,
-      "false_negatives": 1,
-      "true_positives": 28
+      "n": 504,
+      "positives": 62,
+      "positive_rate": 0.123,
+      "roc_auc": 0.596,
+      "pr_auc": 0.1461,
+      "threshold": 0.3958,
+      "recall": 0.8548,
+      "precision": 0.1559,
+      "true_negatives": 155,
+      "false_positives": 287,
+      "false_negatives": 9,
+      "true_positives": 53
     }
   },
   "test": {
     "baseline_regras": {
-      "n": 155,
-      "positives": 8,
-      "positive_rate": 0.0516,
-      "roc_auc": 0.6216,
-      "pr_auc": 0.0915,
-      "threshold": 0.0829,
-      "recall": 0.875,
-      "precision": 0.0526,
-      "true_negatives": 21,
-      "false_positives": 126,
-      "false_negatives": 1,
-      "true_positives": 7
+      "n": 305,
+      "positives": 26,
+      "positive_rate": 0.0852,
+      "roc_auc": 0.4041,
+      "pr_auc": 0.0744,
+      "threshold": 0.0627,
+      "recall": 0.8462,
+      "precision": 0.0806,
+      "true_negatives": 28,
+      "false_positives": 251,
+      "false_negatives": 4,
+      "true_positives": 22
     },
     "regressao_logistica": {
-      "n": 155,
-      "positives": 8,
-      "positive_rate": 0.0516,
-      "roc_auc": 0.6054,
-      "pr_auc": 0.0727,
-      "threshold": 0.1418,
-      "recall": 1.0,
-      "precision": 0.0548,
-      "true_negatives": 9,
-      "false_positives": 138,
-      "false_negatives": 0,
-      "true_positives": 8
+      "n": 305,
+      "positives": 26,
+      "positive_rate": 0.0852,
+      "roc_auc": 0.6545,
+      "pr_auc": 0.1441,
+      "threshold": 0.3359,
+      "recall": 0.9231,
+      "precision": 0.1008,
+      "true_negatives": 65,
+      "false_positives": 214,
+      "false_negatives": 2,
+      "true_positives": 24
     },
     "floresta_aleatoria": {
-      "n": 155,
-      "positives": 8,
-      "positive_rate": 0.0516,
-      "roc_auc": 0.4609,
-      "pr_auc": 0.0506,
-      "threshold": 0.3521,
-      "recall": 1.0,
-      "precision": 0.0588,
-      "true_negatives": 19,
-      "false_positives": 128,
-      "false_negatives": 0,
-      "true_positives": 8
+      "n": 305,
+      "positives": 26,
+      "positive_rate": 0.0852,
+      "roc_auc": 0.6806,
+      "pr_auc": 0.1961,
+      "threshold": 0.3958,
+      "recall": 0.9231,
+      "precision": 0.1127,
+      "true_negatives": 90,
+      "false_positives": 189,
+      "false_negatives": 2,
+      "true_positives": 24
     }
   },
   "importances": [
     {
       "feature": "state",
-      "importance": 0.01692,
-      "std": 0.00714
+      "importance": 0.0276,
+      "std": 0.0093
     },
     {
-      "feature": "dry_spell_max_days",
-      "importance": 0.00595,
-      "std": 0.00405
+      "feature": "aspect_label",
+      "importance": 0.00659,
+      "std": 0.00944
     },
     {
       "feature": "elevation_range_m",
-      "importance": 0.00459,
-      "std": 0.00692
+      "importance": 0.0055,
+      "std": 0.01135
     },
     {
       "feature": "slope_mean_deg",
-      "importance": 0.00368,
-      "std": 0.00229
+      "importance": 0.00483,
+      "std": 0.00179
     },
     {
       "feature": "days_rain72h_ge30",
-      "importance": 0.00228,
-      "std": 0.00629
+      "importance": 0.0041,
+      "std": 0.00813
+    },
+    {
+      "feature": "dry_spell_max_days",
+      "importance": 0.00383,
+      "std": 0.00577
+    },
+    {
+      "feature": "area_ha",
+      "importance": 0.00362,
+      "std": 0.00374
+    },
+    {
+      "feature": "pct_exposed",
+      "importance": 0.00095,
+      "std": 0.00234
+    },
+    {
+      "feature": "coverage_days",
+      "importance": 0.00091,
+      "std": 0.00124
     },
     {
       "feature": "elevation_mean_m",
-      "importance": 0.00062,
-      "std": 0.00456
-    },
-    {
-      "feature": "start_month",
-      "importance": 0.00032,
-      "std": 0.00372
+      "importance": 0.00034,
+      "std": 0.00119
     },
     {
       "feature": "days_thunderstorm",
@@ -197,83 +212,68 @@
       "std": 0.0
     },
     {
-      "feature": "coordinate_source",
-      "importance": -7e-05,
-      "std": 0.00038
+      "feature": "pct_lowland",
+      "importance": -6e-05,
+      "std": 6e-05
     },
     {
       "feature": "rain_max_day_mm",
-      "importance": -0.00114,
-      "std": 0.00116
+      "importance": -0.00017,
+      "std": 0.00158
     },
     {
       "feature": "weather_days",
-      "importance": -0.00142,
-      "std": 0.00453
+      "importance": -0.00025,
+      "std": 0.00041
     },
     {
-      "feature": "pct_lowland",
-      "importance": -0.00188,
-      "std": 0.00412
+      "feature": "start_month",
+      "importance": -0.00057,
+      "std": 0.00315
     },
     {
-      "feature": "pct_exposed",
-      "importance": -0.00202,
-      "std": 0.00478
-    },
-    {
-      "feature": "area_ha",
-      "importance": -0.00236,
-      "std": 0.00286
-    },
-    {
-      "feature": "gust_max_kmh",
-      "importance": -0.00304,
-      "std": 0.0038
+      "feature": "coordinate_source",
+      "importance": -0.00243,
+      "std": 0.00148
     },
     {
       "feature": "rain_total_mm",
-      "importance": -0.00339,
-      "std": 0.00281
-    },
-    {
-      "feature": "coverage_days",
-      "importance": -0.00473,
-      "std": 0.00871
-    },
-    {
-      "feature": "aspect_label",
-      "importance": -0.00477,
-      "std": 0.01093
-    },
-    {
-      "feature": "temp_max_c",
-      "importance": -0.00564,
-      "std": 0.00972
+      "importance": -0.00361,
+      "std": 0.00492
     },
     {
       "feature": "rh_min_pct",
-      "importance": -0.00936,
-      "std": 0.00547
+      "importance": -0.00674,
+      "std": 0.00704
     },
     {
-      "feature": "crop_group",
-      "importance": -0.02592,
-      "std": 0.01519
+      "feature": "temp_max_c",
+      "importance": -0.00689,
+      "std": 0.00519
+    },
+    {
+      "feature": "gust_max_kmh",
+      "importance": -0.01066,
+      "std": 0.00572
     },
     {
       "feature": "slope_max_deg",
-      "importance": -0.02635,
-      "std": 0.01215
+      "importance": -0.01203,
+      "std": 0.0067
+    },
+    {
+      "feature": "crop_group",
+      "importance": -0.01691,
+      "std": 0.01351
     }
   ],
-  "beats_baseline": false,
+  "beats_baseline": true,
   "verdict": {
-    "pr_auc_difference": -0.0188,
-    "ci95_low": -0.1275,
-    "ci95_high": 0.0384,
-    "p_model_better": 0.2603,
-    "indistinguishable": true,
-    "resamples": 9998
+    "pr_auc_difference": 0.0697,
+    "ci95_low": 0.0033,
+    "ci95_high": 0.1691,
+    "p_model_better": 0.9809,
+    "indistinguishable": false,
+    "resamples": 10000
   }
 }

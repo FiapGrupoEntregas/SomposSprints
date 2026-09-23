@@ -1,6 +1,6 @@
 {
-  "gerado_em": "2026-09-20T14:11:29+00:00",
-  "linhas": 1184,
+  "gerado_em": "2026-09-21T11:28:21+00:00",
+  "linhas": 2256,
   "amostra_pedida": 2500,
   "seed": 42,
   "fontes": {
@@ -44,47 +44,48 @@
   ],
   "rotulos": {
     "target_claim": {
-      "positivos": 199,
-      "taxa": 0.1681
+      "positivos": 390,
+      "taxa": 0.1729
     },
     "target_rain_claim": {
-      "positivos": 49,
-      "taxa": 0.0414
+      "positivos": 94,
+      "taxa": 0.0417
     }
   },
   "composicao": {
     "por_ano": {
-      "2021": 223,
-      "2020": 217,
-      "2024": 155,
-      "2023": 130,
-      "2022": 124,
-      "2019": 106,
-      "2016": 82,
-      "2017": 80,
-      "2018": 67
+      "2021": 432,
+      "2020": 387,
+      "2024": 305,
+      "2022": 269,
+      "2023": 235,
+      "2019": 201,
+      "2016": 160,
+      "2017": 139,
+      "2018": 128
     },
     "por_uf": {
-      "PR": 435,
-      "RS": 241,
-      "SP": 158,
-      "SC": 96,
-      "MG": 94,
-      "MS": 65,
-      "GO": 54,
-      "MT": 19,
-      "ES": 9,
-      "TO": 7,
-      "MA": 2,
-      "BA": 2,
+      "PR": 837,
+      "RS": 470,
+      "SP": 312,
+      "SC": 169,
+      "MG": 147,
+      "GO": 122,
+      "MS": 113,
+      "MT": 34,
+      "ES": 19,
+      "BA": 12,
+      "TO": 10,
+      "MA": 7,
+      "SE": 2,
       "PI": 1,
       "PA": 1
     },
     "coordinate_source": {
-      "dms": 1058,
-      "decimal": 126
+      "dms": 2022,
+      "decimal": 234
     },
-    "culturas_distintas": 28
+    "culturas_distintas": 32
   },
   "execucao_atual": {
     "policies_sampled": 0,

@@ -23,5 +23,7 @@ def bootstrap() -> Path:
     """Deixa `app` importável e o banco de `api/` acessível de qualquer diretório."""
     if str(API_DIR) not in sys.path:
         sys.path.insert(0, str(API_DIR))
-    os.environ.setdefault("AGRISHIELD_DATABASE_URL", f"sqlite:///{API_DIR / 'agrishield.db'}")
+    os.environ.setdefault(
+        "AGRISHIELD_DATABASE_URL", f"sqlite:///{API_DIR / 'agrishield.db'}"
+    )
     return ROOT

@@ -21,6 +21,7 @@ from app.services.history import (
     DEFAULT_HISTORY_DAYS,
     MAX_HISTORY_DAYS,
     MAX_TIMELINE_EVENTS,
+    count_events,
     device_history,
     summarize,
 )
@@ -166,10 +167,23 @@ def test_the_history_says_what_it_is_not_yet(session: Session) -> None:
 
 def test_summarize_is_pure(session: Session) -> None:
     """A função do resumo não toca banco nem relógio: dá para testá-la com listas."""
-    history = summarize([], [], DEVICE_ID, FARM_ID, days=3)
+    history = summarize([], {}, DEVICE_ID, FARM_ID, days=3)
 
     assert history.days == 3
     assert history.readings == 0
+
+
+def test_count_events_is_the_pure_counterpart_of_the_aggregation(session: Session) -> None:
+    """A contagem em memória e a do banco precisam dar o mesmo resultado."""
+    seed(session)
+    _, events = device_history(session, DEVICE_ID, FARM_ID, days=7, now=NOW)
+
+    assert count_events(events) == {
+        "tilt_alert": 2,
+        "rollover": 1,
+        "incident_report": 1,
+        "limit_applied": 1,
+    }
 
 
 # --- A linha do tempo -----------------------------------------------------------------------------
@@ -192,6 +206,50 @@ def test_the_timeline_is_bounded(session: Session) -> None:
     _, events = device_history(session, DEVICE_ID, FARM_ID, days=7, now=NOW)
 
     assert len(events) == MAX_TIMELINE_EVENTS
+
+
+def test_the_counters_ignore_the_timeline_ceiling(session: Session) -> None:
+    """O teto é da linha do tempo, não da contagem.
+
+    Não é hipotético: a API republica o `config` de hora em hora, então uma janela de 7 dias já
+    passa de 150 `limit_applied`. Se os contadores saírem da lista truncada, eles param em 100 em
+    silêncio — e o histórico passa a mentir justamente sobre a máquina que mais trabalhou.
+    """
+    limits = MAX_TIMELINE_EVENTS + 68  # 168 = uma republicação por hora em 7 dias
+    alerts = 7
+    for index in range(limits):
+        add_event(session, NOW - timedelta(minutes=index), "limit_applied", f"l{index}")
+    for index in range(alerts):
+        add_event(session, NOW - timedelta(minutes=index), "tilt_alert", f"a{index}")
+
+    history, events = device_history(session, DEVICE_ID, FARM_ID, days=7, now=NOW)
+
+    assert len(events) == MAX_TIMELINE_EVENTS
+    assert history.limits_applied == limits
+    assert history.alerts == alerts
+    assert history.rollovers == 0
+    assert history.incident_reports == 0
+
+
+def test_the_counters_still_agree_with_the_report_beyond_the_ceiling(session: Session) -> None:
+    """A concordância com o W12 não pode depender de a janela ser pequena.
+
+    O relatório do equipamento conta os eventos sem teto; o histórico precisa contar igual mesmo
+    quando a linha do tempo é cortada.
+    """
+    seed(session)
+    for index in range(MAX_TIMELINE_EVENTS + 20):
+        add_event(session, NOW - timedelta(minutes=index), "limit_applied", f"l{index}")
+        add_event(session, NOW - timedelta(minutes=index), "tilt_alert", f"x{index}")
+
+    history, events = device_history(session, DEVICE_ID, FARM_ID, days=7, now=NOW)
+    report = equipment_trend(session, DEVICE_ID, FARM_ID, days=7, now=NOW)
+
+    assert len(events) == MAX_TIMELINE_EVENTS
+    assert history.alerts == MAX_TIMELINE_EVENTS + 20 + 2
+    assert history.limits_applied == MAX_TIMELINE_EVENTS + 20
+    assert report.alerts == history.alerts + history.rollovers
+    assert report.rollovers == history.rollovers
 
 
 # --- Concordância com o relatório do equipamento (W12) -------------------------------------------

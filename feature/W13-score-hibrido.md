@@ -7,7 +7,7 @@
 | Depende de | D3, W3 |
 | Janela | 22/09 |
 | Responsável | dev-api + dev-front |
-| Status | 🟦 Em revisão (API e front implementados; 1 correção da API pendente) |
+| Status | ✅ Pronto (aprovado na revisão em 21/09/2026) |
 
 ## Objetivo
 
@@ -37,11 +37,17 @@ modelo** (que interessa à seguradora), deixando claro o que cada um significa e
 - **O pipeline manda.** `forecast.model`, os três campos por dia e o `model_version` da trilha só
   aparecem se o `.joblib` carregou. As duas metades do modelo vêm de arquivos diferentes, e uma
   escrita interrompida num retreino deixa `.json` novo com `.joblib` pela metade: anunciar
-  "modelo v1, AUC-PR 0,073" sem nenhuma probabilidade seria o bloco que existe para dizer a
+  "modelo v1, AUC-PR 0,144" sem nenhuma probabilidade seria o bloco que existe para dizer a
   verdade descrevendo um modelo que não pontuou nada.
-- **Nada de métrica no código.** Versão, métricas, importâncias e até a frase "não superou o
-  baseline" saem do artefato em tempo de execução; um retreino que mude o resultado inverte a
-  frase sozinho.
+- **Nada de métrica no código.** Versão, métricas, importâncias e até a frase de comparação com o
+  baseline saem do artefato em tempo de execução; um retreino que mude o resultado inverte a frase
+  sozinho. **Isso foi exercitado de verdade em 21/09:** com a D2 fechada em 2.256 linhas e o
+  modelo retreinado, o resultado inverteu — o modelo passou a **superar** o baseline no teste de
+  2024 — e o cartão acompanhou **sem uma linha de código alterada**
+  (`test_a_retrained_model_changes_the_block_without_touching_the_code`). A inversão vem com três
+  ressalvas, que estão em [dados-e-modelo.md](../document/dados-e-modelo.md#resultados-do-modelo-d3):
+  26 positivos no teste, IC 95% quase tocando o zero e virada vinda da troca do conjunto de teste,
+  não de o modelo ter melhorado.
 - **Campo novo `model` no nível da resposta**, além dos três por dia: carrega a ressalva, as
   métricas do teste e o tamanho da amostra. Fica fora do dia para não repetir o bloco 7 vezes.
 - **A ressalva da janela.** O modelo foi treinado com uma linha por apólice/safra e aqui é

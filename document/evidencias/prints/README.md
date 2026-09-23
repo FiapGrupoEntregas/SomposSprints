@@ -2,7 +2,7 @@
 
 O entregável 5 do enunciado pede **prints de scores, tendências por equipamento/região/operação e
 alertas**. Esta pasta guarda essas imagens. **Nenhuma foi capturada ainda** (situação em
-20/09/2026, fim do dia).
+21/09/2026).
 
 **Padrão de nome:** `AAAA-MM-DD-<tela>-<detalhe>.png` — ex.: `2026-09-25-risco-carmo-dia-vermelho.png`.
 PNG, largura mínima de 1600 px, navegador em tela cheia, sem abas pessoais à mostra.
@@ -26,18 +26,23 @@ PNG, largura mínima de 1600 px, navegador em tela cheia, sem abas pessoais à m
 | 8 | Resposta de `GET /api/v1/audit` com uma linha de `decision_log` | `/docs` | I5 (pronta) | ⬜ |
 | 9 | **Perfil de terreno A/B/C**: selo da classe, score 0–100, indicadores e carteira ordenada | Subscrição | W8 (pronta) | ⬜ |
 | 10 | **Tendências por equipamento, região e cultura** — um print por aba, com o gráfico e o botão de CSV à vista | Relatórios | W12 (pronta) | ⬜ |
-| 11 | **Score híbrido**: cartão da probabilidade do modelo ao lado do nível por regras, **com a ressalva do baseline legível no print** | Mapa de risco | W13, D3 (prontas) | ⬜ |
+| 11 | **Score híbrido**: cartão da probabilidade do modelo ao lado do nível por regras, **com a ressalva do baseline legível no print** | Mapa de risco | W13, D3 (prontas) | ⬜ — **capturar depois do retreino de 21/09** |
 
 ## Cuidados que valem nota
 
 - **Item 11 é o print mais delicado da entrega.** Ele precisa mostrar o cartão **inteiro**,
-  incluindo a linha da AUC-PR e o texto que diz que o modelo **não superou o baseline por
-  regras**. Um print cortado, que mostre só a probabilidade, transforma um resultado honesto em
-  promessa vazia — e é exatamente o tipo de coisa que a banca pergunta. Role a página antes de
+  incluindo a linha da AUC-PR e a ressalva inteira — hoje ela diz que o modelo **superou** o
+  baseline, **mas num alvo mais amplo** do que o perigo do alerta, e que as regras continuam
+  sendo a base do alerta ao operador. Um print cortado, que mostre só a probabilidade, transforma
+  um resultado honesto em promessa vazia — e é exatamente o tipo de coisa que a banca pergunta. Role a página antes de
   capturar.
-- **O modelo será retreinado antes da entrega.** Se isso acontecer depois de você capturar o item
-  11, **refaça o print**: a versão e a métrica no cartão mudam, e um print com número velho vira
-  divergência entre a imagem e o artefato.
+- **⚠️ O modelo FOI retreinado em 21/09 — isto deixou de ser aviso e virou instrução.** O artefato
+  `api/app/data/model/risk_model_v1.json` mudou, e o cartão lê dele a versão, as métricas e a
+  frase de comparação em tempo de execução. **Capture o item 11 com a API servindo o artefato
+  novo**; qualquer print do cartão anterior a 21/09 está velho e precisa ser refeito.
+- **E se as 244 linhas que faltam na D2 forem completadas**, o modelo é retreinado outra vez e o
+  item 11 precisa ser refeito de novo. Decida isso antes do congelamento de 25/09 — é o que
+  [dados-e-modelo.md](../../dados-e-modelo.md#resultados-do-modelo-d3) usa como corte.
 - **Item 10:** são três abas (Equipamento, Região, Cultura). O enunciado fala em "equipamento,
   região e operação" — a nossa terceira dimensão é **cultura**, que é o recorte de operação que a
   base real do PSR permite. Capture as três.

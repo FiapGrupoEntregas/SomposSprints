@@ -7,7 +7,7 @@
 | Depende de | D2 |
 | Janela | 21/09 |
 | Responsável | dev-dados |
-| Status | ✅ Concluída (20/09/2026) — modelo **não** supera o baseline; as regras seguem no comando |
+| Status | ✅ Concluída (21/09/2026) — retreinada com 2.256 linhas: o modelo **supera** o baseline no teste, com ressalvas; as regras seguem comandando o alerta |
 
 ## Objetivo
 
@@ -60,35 +60,68 @@ explicam o alerta ao operador, o modelo dá a probabilidade para a seguradora.
 - [x] Artefato versionado + carregamento na API
 - [x] Seção de resultados e limitações na documentação
 
-## Resultado (20/09/2026)
+## Resultado (21/09/2026) — com o dataset completo
 
-**O modelo não supera o baseline por regras.** No teste (2024, 8 positivos em 155):
+**O modelo supera o baseline por regras.** No teste (2024, 26 positivos em 305):
 
 | | AUC-ROC | AUC-PR | Recall | Precisão |
 |---|---|---|---|---|
-| **Baseline (regras)** | **0,622** | **0,091** | 0,875 | 0,053 |
-| Regressão logística (escolhida) | 0,605 | 0,073 | 1,000 | 0,055 |
+| Baseline (regras) | 0,404 | 0,074 | 0,846 | 0,081 |
+| **Regressão logística (escolhida)** | **0,654** | **0,144** | 0,923 | 0,101 |
+| Floresta aleatória | 0,681 | 0,196 | 0,923 | 0,113 |
 
-**E a amostra não permitiria provar que supera.** Bootstrap pareado da diferença de AUC-PR no
-teste: diferença **−0,019**, IC 95% **[−0,128, +0,038]**, P(modelo > baseline) = **0,26**. O zero
-está dentro do intervalo — com 8 positivos os dois são **indistinguíveis**. A leitura honesta é
-"não superou, e não daria para demonstrar superioridade nem se ela existisse", não "o ganho é
-zero".
+Bootstrap pareado da diferença de AUC-PR: **+0,0697**, IC 95% **[+0,003, +0,169]**,
+P(modelo > baseline) = **0,98** (10.000 reamostragens). Na validação (62 positivos) o mesmo sinal:
+0,151 × 0,126. `beats_baseline: true` no artefato.
 
-Na **validação** (29 positivos) o modelo ganha (AUC-PR 0,124 × 0,118). A inversão entre validação
-e teste é a própria tese do deslocamento temporal, não uma contradição.
+**As três ressalvas que viajam com o número:**
 
-Publicado assim, como [regras-de-risco §11](../document/regras-de-risco.md) já previa. Os números
-completos, a importância das variáveis e a leitura do resultado estão em
+1. **26 positivos no teste**, abaixo dos 30 que o próprio `train_model.py` declara como mínimo
+   (`MIN_TEST_POSITIVES`) — o aviso disparou na execução.
+2. **O IC 95% quase toca o zero** no extremo inferior (+0,003).
+3. **A virada veio do conjunto de teste, não do modelo.** Auditado em 21/09 com os dois artefatos
+   lado a lado: o modelo de 20/09, **sem retreino**, já venceria no teste novo (+0,059), e o de
+   21/09 ainda perderia na fatia antiga (−0,023). Da variação total de +0,088 na vantagem, a troca
+   do teste responde por +0,077 a +0,093 e o retreino por +0,011.
+
+**Por que a fatia antiga enganava:** ela tinha 8 sinistros em 155 linhas (5,2%), contra **9,46%**
+da população de 2024 no PSR. O teste de hoje, com 305 linhas e 8,5%, bate com a população
+(binomial p = 0,70). Ano, cultura e rótulo geral não derivaram entre as linhas antigas e as novas
+(χ² p = 0,33 · 0,50 · Fisher 0,54); só a UF derivou de leve (p = 0,015).
+
+**E o baseline nunca discriminou este alvo:** sua AUC-ROC por safra fica entre 0,370 e 0,613 nas
+nove safras, e o IC 95% contém 0,5 em todos os recortes — inclusive no 0,622 publicado em 20/09
+([0,381, 0,827], com 8 positivos). O motivo de fundo: o baseline é um score de **encharcamento e
+tempestade**, e `target_claim` é dominado por **seca** (74,4% das indenizações de 2024) e geada.
+Contra `target_rain_claim`, que é o alvo das regras, o baseline marca AUC-ROC **0,625** no dataset
+inteiro. **O modelo ganha no alvo amplo, não no perigo que o alerta trata** — por isso a
+[regras-de-risco §11](../document/regras-de-risco.md) continua valendo sem mudança.
+
+**Por que continua a regressão logística, com a floresta melhor no teste (0,196 × 0,144):** na
+validação, o único lugar onde se pode escolher, a **logística ganhou** (0,151 × 0,146; a floresta
+fica −0,0045 contra um erro padrão de 0,0190, então a regra de um erro padrão nem precisou
+desempatar). Escolher pelo teste queimaria o único conjunto limpo. E a floresta é o próprio
+exemplo do ruído: em 20/09 ela parecia melhor na validação e saiu pior no teste; em 21/09,
+o inverso.
+
+Números completos, decomposição, importância das variáveis e limitações em
 [dados-e-modelo.md](../document/dados-e-modelo.md).
 
-**O que o resultado diz:** a taxa de sinistro varia de 5,0% (2017) a 41,3% (2021) — oito vezes. O
-regime macroclimático do ano domina qualquer sinal de relevo ou de clima da safra, e 9 safras não
-bastam para aprendê-lo. A divisão temporal expôs isso; uma divisão aleatória teria escondido.
+### Resultado de 20/09/2026 (mantido para histórico)
 
-**Duas decisões que valem registro:**
-- **Regra de um erro padrão na seleção.** A floresta ganhou por 0,002 de AUC-PR na validação, com 29 positivos — ruído. O candidato mais complexo só entra se ganhar acima do erro padrão da diferença (bootstrap pareado). A floresta não passou, e no teste de fato saiu pior (0,051). Decidido sem olhar o teste.
-- **`target_rain_claim` não é avaliável:** 2 positivos no teste. Métricas indicativas; a conclusão se apoia no `target_claim`.
+Com o dataset parcial de 1.184 linhas, o modelo **não** superava o baseline: no teste (8 positivos
+em 155), baseline AUC-PR **0,091** × **0,073** do modelo, diferença −0,019 com IC 95%
+[−0,128, +0,038] e P(modelo > baseline) = 0,26 — indistinguíveis. A conclusão publicada então era
+correta para o que estava medido; a auditoria de 21/09 mostrou que era uma afirmação sobre **8
+sinistros**, não sobre o modelo.
 
-**Pendente para a W13:** o serviço expõe `get_model()` (com cache) e `predict_proba()`, prontos
-para a rota. A ligação em `app/main.py` e no endpoint fica com a W13, que é dona daqueles arquivos.
+**Duas decisões que valem registro (válidas nas duas datas):**
+- **Regra de um erro padrão na seleção.** O candidato mais complexo só entra se ganhar acima do
+  erro padrão da diferença, estimado por bootstrap pareado na validação. Decidido sem olhar o teste.
+- **`target_rain_claim` não é avaliável:** 4 positivos no teste (2 em 20/09). Métricas
+  indicativas; a conclusão se apoia no `target_claim`.
+
+**Integração (W13, concluída):** o serviço expõe `get_model()` (com cache) e `predict_proba()`, e a
+W13 os liga à rota e à tela. O texto da ressalva exibido na API e no front é montado a partir do
+JSON do artefato (`app/services/model_scoring.py::_note`), então ele acompanhou a virada do
+resultado sem edição manual.

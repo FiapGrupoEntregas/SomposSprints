@@ -2,8 +2,9 @@
 
 Checklist do enunciado. Mantido pelo agente `doc-entrega`. **Situação real, sem maquiagem.**
 
-> **Conferido em 20/09/2026**, lendo o código, e não o plano — revisado no fim do dia, depois das
-> entregas de W8, W9, W12, W13, D3 e I4.
+> **Conferido em 21/09/2026**, lendo o código, e não o plano — depois das entregas de W8, W9, W12,
+> W13, D3 e I4, e da rodada de 21/09 que aprovou **W11** e **W13**, fechou a **D2** em 2.256
+> linhas e **retreinou o modelo** (resultado invertido: ver o entregável 2).
 >
 > **Contagem de testes: de propósito, não há total fixado aqui.** O número cresceu várias vezes
 > só nesta semana, e um total escrito num documento envelhece em horas. Reconte no fechamento com
@@ -42,10 +43,11 @@ registro das histórias das sprints anteriores, e isso está declarado no própr
   `health`, `farms`, `devices`, `reports`, `replay`, `audit`) → `app/services/` (16 módulos:
   `terrain`, `weather`, `risk`, `limits`, `devices`, `farms`, `scenarios`, `dataset`,
   `psr_ingest`, `recommendations`, `underwriting`, `replay`, `reports`, `model`,
-  `model_scoring`) → `app/clients/open_meteo.py` e `app/repositories/` → `app/db.py`.
+  `model_scoring`, `history`) → `app/clients/open_meteo.py` e `app/repositories/` → `app/db.py`.
   A ponte MQTT (`app/mqtt/`) roda no `lifespan`.
-- **23 rotas registradas** em `app/api/v1/router.py` (health 1 · fazenda 6 · equipamento 6 ·
-  relatórios 6, contando os `.csv` · replay 3 · auditoria 1). A lista completa, com o status de
+- **24 rotas registradas** em `app/api/v1/router.py` (health 1 · fazenda 6 · equipamento 7,
+  incluindo o histórico da W11 · relatórios 6, contando os `.csv` · replay 3 · auditoria 1).
+  Confira com `grep -c @router api/app/api/v1/routes/*.py`. A lista completa, com o status de
   cada uma, está em [arquitetura.md](arquitetura.md#endpoints-da-api-v1).
 - **Tratamento de exceções com comportamento declarado**: Open-Meteo fora do ar ou em `429` →
   *stale-if-error* pelo cache e, sem cache, `503` com mensagem em português; broker fora do ar → a
@@ -97,27 +99,42 @@ registro das histórias das sprints anteriores, e isso está declarado no própr
 `train_model.py` (D3) → artefato em `api/app/data/model/`, carregado pela API. Os quatro passos
 rodam e estão testados.
 
-A limitação: o dataset parou na **cota diária da Open-Meteo**, não por falta de código. A ficha
-`data/dataset_treino.json` registra o tamanho da amostra pedida e o obtido, e
-[dados-e-modelo.md](dados-e-modelo.md#dataset-de-treino-d2) explica qual API acabou primeiro e
-por quê. Completar **não** exige refazer nada: o parcial está salvo e o mesmo comando retoma.
+A limitação, atualizada em 21/09: o dataset fechou com **2.256 linhas** — **acima das 2.000 do
+critério da D2**, e 244 abaixo das 2.500 pedidas. O lote foi encerrado quando a **cota diária** da
+Open-Meteo se esgotou — confirmado às 11:55 UTC por `curl` nos três subdomínios, todos com
+`Daily API request limit exceeded` no corpo — e consolidado com o que já estava pronto. A causa de
+fundo é o **peso** da chamada, não o ritmo: requisição de mais de duas semanas conta como várias, e
+a janela aqui é a vigência da apólice (~21 chamadas por requisição de clima), o que baixa o teto
+prático para ~465 apólices por dia. Como a amostra é embaralhada antes de ser processada, parar no
+meio dá um subconjunto aleatório dos estratos, não um recorte enviesado. A ficha `data/dataset_treino.json` registra o pedido e o
+obtido, e [dados-e-modelo.md](dados-e-modelo.md#dataset-de-treino-d2) traz a composição. Completar
+as 244 **não** exige refazer nada — mas obriga a refazer o quadro de métricas da D3 e os prints
+junto (ver [evidência de 21/09](evidencias/2026-09-21-retomada-d2-e-fechamento-w11-w13.md)).
 
-**Modelo — ✅ treinado, versionado e com métricas publicadas. E ele NÃO supera o baseline por
-regras.**
+**Modelo — ✅ treinado, versionado e com métricas publicadas. Desde o retreino de 21/09 ele
+supera o baseline por regras, e as ressalvas vão junto.**
 
 - O artefato está em `api/app/data/model/risk_model_v1.joblib`, com o `.json` de métricas ao lado,
   **versionados no Git**. A API **carrega, nunca treina** (`app/services/model.py`), e sobe
   normalmente se o artefato não estiver lá — nesse caso os campos do modelo saem `null`.
-- **O resultado honesto, que precisa aparecer em todo lugar onde o modelo for citado:** no
-  conjunto de teste o **baseline por regras ficou à frente**. Um bootstrap pareado da diferença
-  mostrou que os dois são **indistinguíveis** com esta amostra — ou seja, não dá para dizer que
-  o modelo é pior, mas também **não seria possível demonstrar que é melhor nem se ele fosse**.
-  Isso é resultado publicado, não defeito. Números, intervalo de confiança e a leitura completa
-  em [dados-e-modelo.md](dados-e-modelo.md#resultados-do-modelo-d3).
-- **Não escreva a métrica aqui.** O modelo será retreinado antes da entrega, e número copiado
-  para dentro de documento envelhece calado. A API monta a ressalva **a partir do próprio
-  artefato** em tempo de execução, e o cartão do front a exibe por inteiro: se um retreino
-  inverter o resultado, a frase se inverte sozinha. O único lugar com a tabela de métricas é o
+- **O resultado honesto, que precisa aparecer em todo lugar onde o modelo for citado:** com a D2
+  fechada em 2.256 linhas e o modelo retreinado em 21/09, o **modelo passou à frente do baseline**
+  no teste de 2024 (em 20/09 era o contrário). A afirmação só vale com três ressalvas, e elas não
+  se separam dela: **(1)** o teste tem **26 positivos**, abaixo do mínimo de 30 que o próprio
+  `train_model.py` exige para conclusão firme; **(2)** o extremo inferior do IC 95% da diferença
+  quase toca o zero; **(3)** a virada veio da **troca do conjunto de teste**, não de o modelo ter
+  melhorado — auditado com o artefato antigo, que sem retreino nenhum já venceria no teste novo.
+  Soma-se a isso que o baseline **nunca discriminou** o alvo `target_claim` em safra nenhuma,
+  porque as regras modelam chuva e tempestade e esse alvo é dominado por seca e geada; no alvo que
+  as regras tratam (`target_rain_claim`) quem discrimina é o baseline. Números, intervalo de
+  confiança e a auditoria completa em
+  [dados-e-modelo.md](dados-e-modelo.md#resultados-do-modelo-d3).
+- **Não escreva a métrica aqui.** O modelo já foi retreinado uma vez (21/09) e pode ser de novo se
+  as 244 linhas forem completadas; número copiado para dentro de documento envelhece calado — foi
+  exatamente o que aconteceu com a frase "não supera o baseline", espalhada por oito documentos
+  que precisaram ser corrigidos em 21/09. A API monta a ressalva **a partir do próprio artefato**
+  em tempo de execução, e o cartão do front a exibe por inteiro: se um retreino inverter o
+  resultado, a frase se inverte sozinha. O único lugar com a tabela de métricas é o
   `dados-e-modelo.md`, e lá ela vem com a data da medição.
 - **Quem decide o alerta ao operador continua sendo a regra explicável** (`regras-de-risco/v1`).
   O modelo entra ao lado, como segunda leitura para a seguradora (W13).
@@ -208,12 +225,12 @@ O diagrama **entrada → banco → modelo → saída** está em
 dados do PSR, a ponte MQTT, as 7 tabelas do SQLite, o modelo da D3, o score híbrido e os 8 blocos
 do firmware.
 
-Foi **reconferido contra o código no fim do dia 20/09**, depois das entregas de D3, W8, W9, W12 e
-W13. A revisão da manhã ainda pintava o modelo, o score híbrido e o bloco de relatórios como
-**pendentes** — eles já tinham sido entregues, e a marcação saiu. Hoje **não há nenhuma caixa
-tracejada**: o que não foi implementado (W10, W11 e o SoilGrids, que nunca saiu do papel)
-simplesmente não aparece no desenho, para não dar a entender que faz parte do sistema. A regra de
-leitura está escrita no próprio documento.
+Foi **reconferido contra o código em 21/09**, depois das entregas de D3, W8, W9, W12, W13 e da
+aprovação da **W11**. O histórico do equipamento entrou no desenho (bloco de saída) quando a W11
+foi aprovada. Hoje **não há nenhuma caixa tracejada**: o que não faz parte do sistema — o alerta
+pelo Telegram (**W10**, decidida **fora do escopo** por exigir token de bot) e o **SoilGrids**, que
+nunca saiu do papel — simplesmente não aparece no desenho, para não dar a entender que existe. A
+regra de leitura está escrita no próprio documento.
 
 **Reconferir uma última vez depois do congelamento em 25/09**, que é quando o desenho passa a ser
 definitivo.

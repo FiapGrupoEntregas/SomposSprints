@@ -23,8 +23,8 @@ arquivo dela. Ao terminar, atualize o **status** nesta tabela.
 | ID | Feature | Prioridade | Camadas | Depende de | Janela | Agente | Status |
 |---|---|---|---|---|---|---|---|
 | [D1](D1-ingestao-psr.md) | Ingestão de dados reais de sinistro (PSR/SISSER) | P0 | api | — | 19/09 | dev-dados | ✅ |
-| [D2](D2-dataset-relevo-clima.md) | Dataset de treino: relevo × clima × sinistro | P0 | api | D1, I1, W2 | 20/09 | dev-dados | 🟨 (1.184 de 2.500 linhas — cota da Open-Meteo) |
-| [D3](D3-modelo-preditivo.md) | Modelo preditivo de risco e métricas | P0 | api | D2 | 21/09 | dev-dados | ✅ |
+| [D2](D2-dataset-relevo-clima.md) | Dataset de treino: relevo × clima × sinistro | P0 | api | D1, I1, W2 | 20/09 | dev-dados | ✅ (2.256 linhas — acima das 2.000 exigidas) |
+| [D3](D3-modelo-preditivo.md) | Modelo preditivo de risco e métricas | P0 | api | D2 | 21/09 | dev-dados | ✅ (retreinado em 2.256 linhas: supera o baseline, com ressalvas) |
 
 ## Plataforma: API + front-web (W)
 
@@ -37,12 +37,12 @@ arquivo dela. Ao terminar, atualize o **status** nesta tabela.
 | [W5](W5-painel-ao-vivo.md) | Painel do equipamento ao vivo | P0 | api, front | I2, I3, E4 | 22/09 | dev-api + dev-front | ✅ |
 | [W8](W8-perfil-de-subscricao.md) | Perfil de risco do terreno para subscrição | P1 | api, front | W2 | 23/09 | dev-api + dev-front | ✅ |
 | [W12](W12-relatorios-tendencias.md) | Relatórios e tendências de risco | P1 | api, front | I3, D1, W8 | 22/09 | dev-api + dev-front | ✅ |
-| [W13](W13-score-hibrido.md) | Score híbrido e explicabilidade na tela | P1 | api, front | D3, W3 | 22/09 | dev-api + dev-front | 🟦 (em revisão) |
+| [W13](W13-score-hibrido.md) | Score híbrido e explicabilidade na tela | P1 | api, front | D3, W3 | 22/09 | dev-api + dev-front | ✅ |
 | [W6](W6-recomendacoes.md) | Recomendações e janela segura | P1 | api, front | W3 | 23/09 | dev-api + dev-front | ✅ |
 | [W7](W7-riscos-extras.md) | Riscos extras: raio, vento, incêndio | P1 | api, front | W3 | 23/09 | dev-api + dev-front | ✅ |
 | [W9](W9-modo-replay.md) | Replay de acidentes reais | P1 | api, front | W3, ~~T2~~ (casos prontos) | 23/09 | dev-api + dev-front | ✅ |
 | [W10](W10-alerta-telegram.md) | Alerta pelo Telegram | P2 | api | I2, E5 | 24/09 | dev-api | ⛔ (fora do escopo: exige token de bot) |
-| [W11](W11-historico-do-equipamento.md) | Histórico do equipamento (prévia do Passaporte) | P2 | api, front | I3 | 24/09 | dev-api + dev-front | 🟦 (em revisão; api e front prontos) |
+| [W11](W11-historico-do-equipamento.md) | Histórico do equipamento (prévia do Passaporte) | P2 | api, front | I3 | 24/09 | dev-api + dev-front | ✅ |
 
 ## Dispositivo: ESP32 no Wokwi (E)
 
@@ -61,7 +61,7 @@ arquivo dela. Ao terminar, atualize o **status** nesta tabela.
 
 | ID | Feature | Prioridade | Depende de | Janela | Agente | Status |
 |---|---|---|---|---|---|---|
-| [DOC1](DOC1-user-stories.md) | User Stories e rastreabilidade | P0 | — | 20/09 | doc-entrega | 🟨 (escrito; falta revisar com o time e atualizar 4 histórias) |
+| [DOC1](DOC1-user-stories.md) | User Stories e rastreabilidade | P0 | — | 20/09 | doc-entrega | ✅ (10 histórias e matriz conferidas contra o código em 21/09; reconferir no congelamento) |
 | [DOC2](DOC2-entrega-final.md) | Entrega final (README, diagrama, evidências, vídeo) | P0 | todas | 24–26/09 | doc-entrega | ⬜ |
 
 ## Trilha do time: não-código (T)
