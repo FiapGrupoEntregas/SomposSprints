@@ -7,7 +7,7 @@
 | Depende de | E1, E4 |
 | Janela | 21/09 |
 | Responsável | Dev |
-| Status | 🟦 Em revisão (implementado; falta o GIF da simulação) |
+| Status | 🟦 Em revisão (estado `rollover` observado no Serial após cerca de 3 s; evento/contexto MQTT e saídas locais ainda não conferidos) |
 
 ## Objetivo
 

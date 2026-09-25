@@ -445,18 +445,16 @@ def test_the_model_version_reaches_the_audit_trail(api: Callable[..., TestClient
     if get_model() is None:
         pytest.skip("sem artefato de modelo neste ambiente")
 
-    with Session(get_engine()) as session:
-        before = len(audit_repository.list_decisions(session, entity_id=FARM_ID, limit=500))
-
-    api().get(RISK_URL)
+    response = api().get(RISK_URL)
 
     with Session(get_engine()) as session:
         rows = audit_repository.list_decisions(
             session, entity_id=FARM_ID, decision_type=DecisionType.RISK_SCORE, limit=500
         )
 
-    assert len(rows) > before - 1
+    assert response.status_code == 200
     latest = rows[0]
+    assert latest.request_id == response.headers["X-Request-ID"]
     assert latest.rule_version.startswith("regras-de-risco/")
     assert latest.model_version is not None
 

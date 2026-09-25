@@ -42,9 +42,9 @@ Para uma decisão nova, adicione ao fim da lista, com o próximo número.
 - **Consequências:** qualquer um dos dois funciona e não há divergência de versões.
 
 ### ADR-008: Broker MQTT público (HiveMQ)
-- **Contexto:** subir e manter um broker próprio custa tempo.
-- **Decisão:** usar `broker.hivemq.com:1883`, com um prefixo de tópico próprio.
-- **Consequências:** zero configuração. Não trafegamos dado sensível e a API valida os payloads. Plano B: `test.mosquitto.org`.
+- **Contexto:** subir e manter um broker próprio custa tempo na demonstração, mas um broker compartilhado não autentica publicadores nem protege mensagens.
+- **Decisão:** `broker.hivemq.com:1883` sem TLS permanece exclusivamente para demo com dados sintéticos. Produção deve usar broker privado, TLS com validação de certificado, autenticação individual e ACL por dispositivo; o serviço deve falhar fechado se a configuração de produção não satisfizer os requisitos.
+- **Consequências:** a demo continua simples, mas qualquer pessoa pode publicar e ler tópicos públicos. Esse modo não é adequado a equipamento real; TLS/credenciais sem ACL no broker não bastam para autorizar tópicos.
 
 ### ADR-009: Persistência em SQLite
 - **Contexto:** precisamos guardar telemetria e eventos por alguns dias, e só para a demo.
@@ -68,5 +68,5 @@ Para uma decisão nova, adicione ao fim da lista, com o próximo número.
 
 ### ADR-013: Controle de acesso por chave de API, sem login de usuário
 - **Contexto:** o enunciado pede controle de acesso, mas login com perfis não cabe no prazo.
-- **Decisão:** chave de API (`X-API-Key`) nos endpoints de escrita e de publicação de limite, leitura aberta na demo, e trilha de auditoria de todas as decisões (I5).
-- **Consequências:** atende ao requisito com pouco esforço. Autenticação de usuário fica declarada no roadmap.
+- **Decisão:** chave de API (`X-API-Key`) nos endpoints de escrita/publicação e auditoria; leitura aberta somente no ambiente local de desenvolvimento/demo, protegida por chave quando implantada em produção.
+- **Consequências:** atende ao MVP e evita expor telemetria por acidente em implantação. Uma chave de API compartilhada não substitui identidade de usuário, perfis e autorização por organização/dispositivo; esses controles continuam necessários em produção real.

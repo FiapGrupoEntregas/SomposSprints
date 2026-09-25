@@ -29,10 +29,14 @@ from app.services.model import (
     get_model,
     load_metadata,
     load_model,
+    load_optional_neural_model,
     predict_proba,
     save_model,
+    save_optional_neural_model,
+    score_optional_neural_model,
     temporal_split,
     train,
+    train_optional_neural_model,
     warm_up,
 )
 from app.services.risk import WIND_DANGER_GUST_KMH, tilt_limit
@@ -432,6 +436,51 @@ def test_load_model_sem_arquivo_devolve_none_com_aviso(tmp_path, caplog) -> None
     with caplog.at_level("WARNING"):
         assert load_model(tmp_path / "nao_existe.joblib") is None
     assert "só com o score por regras" in caplog.text
+
+
+def test_load_rede_opcional_ausente_avisa_e_score_seguro(tmp_path, caplog) -> None:
+    with caplog.at_level("WARNING"):
+        model = load_optional_neural_model(tmp_path / "ausente.joblib")
+    assert model is None
+    assert "Artefato da rede neural opcional não encontrado" in caplog.text
+    assert score_optional_neural_model(model, make_row()) is None
+
+
+def test_load_rede_opcional_corrompida_nao_engole_excecao(tmp_path) -> None:
+    artifact = tmp_path / "corrompido.joblib"
+    artifact.write_bytes(b"nao e um joblib valido")
+    with pytest.raises(KeyError):
+        load_optional_neural_model(artifact)
+
+
+@pytest.fixture(scope="module")
+def resultado_rede_opcional():
+    return train_optional_neural_model(make_frame(), target=TARGET_CLAIM, seed=42)
+
+
+def test_rede_opcional_salva_carrega_e_produz_score_limitado(
+    resultado_rede_opcional, tmp_path
+) -> None:
+    model_path, metadata_path = save_optional_neural_model(
+        resultado_rede_opcional, "dataset.parquet", 240, directory=tmp_path
+    )
+    loaded = load_optional_neural_model(model_path)
+    score = score_optional_neural_model(loaded, make_row())
+    assert score is not None and 0.0 <= score <= 1.0
+
+    metadata = load_metadata(metadata_path)
+    assert metadata["validation"] == resultado_rede_opcional.validation
+    assert metadata["test"] == resultado_rede_opcional.test
+    assert metadata["test_used_for_selection_or_tuning"] is False
+    assert metadata["seed"] == resultado_rede_opcional.seed
+    assert metadata["scikit_learn_version"]
+    assert (
+        metadata["threshold"]
+        == resultado_rede_opcional.validation["rede_neural_opcional"]["threshold"]
+    )
+    assert resultado_rede_opcional.test["rede_neural_opcional"]["threshold"] == (
+        resultado_rede_opcional.threshold
+    )
 
 
 def test_load_model_com_arquivo_corrompido_devolve_none(tmp_path, caplog) -> None:

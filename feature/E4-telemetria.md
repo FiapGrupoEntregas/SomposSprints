@@ -7,7 +7,7 @@
 | Depende de | E1 |
 | Janela | 19/09 |
 | Responsável | Dev |
-| Status | 🟦 Em revisão (implementado; falta o GIF da simulação) |
+| Status | 🟦 Em revisão (intervalo de 5 s e timestamp NTP observados no Wokwi; falta validar recebimento pela API) |
 
 ## Objetivo
 
@@ -32,11 +32,11 @@ Enviar à API, periodicamente, o estado da máquina, para o painel ao vivo (W5) 
 
 ## Critérios de aceite
 
-- [ ] No `mosquitto_sub`, aparece uma mensagem a cada 5 s (±0,5 s) (conferir no Wokwi, T6). Implementado com `TELEMETRY_INTERVAL_MS` e reagendamento dentro de `publishTelemetry`, sem rajada depois de um envio imediato.
+- [x] O Serial do Wokwi confirmou publicações sequenciais a cada 5 s (seq 1–5; timestamps com intervalos de 5 s, em 25/09/2026; ver [evidência](../document/evidencias/2026-09-25-inclinometro-wokwi.md)). O recebimento via `mosquitto_sub` não foi testado. Implementado com `TELEMETRY_INTERVAL_MS` e reagendamento dentro de `publishTelemetry`, sem rajada depois de um envio imediato.
 - [x] O payload é aceito pelo schema `TelemetryMessage` da API (I2) — exemplo real em `api/tests/fixtures/telemetry_sample.json`, gerado com o próprio ArduinoJson. **Contrato (já registrado):** float inteiro chega sem casa decimal (`10.0` → `10`), então o schema do I2 aceita `int` onde o campo é `float`. Ver "Regras gerais" em [contrato-mqtt.md](../document/contrato-mqtt.md).
 - [x] Payload < 300 bytes: **171 bytes** no exemplo salvo.
 - [x] Uma mudança de nível gera uma telemetria extra na hora (`updateAlert` → `publishTelemetry`).
-- [ ] `ts` > 0 depois da sincronização do NTP (conferir no Wokwi, T6). Implementado em `startNtp` + `currentEpochSeconds`, com piso em 2024-01-01.
+- [x] `ts` > 0 depois da sincronização NTP (timestamps epoch válidos observados nas telemetrias do Wokwi em 25/09/2026; ver [evidência](../document/evidencias/2026-09-25-inclinometro-wokwi.md)). Implementado em `startNtp` + `currentEpochSeconds`, com piso em 2024-01-01.
 
 ## Tarefas
 

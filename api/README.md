@@ -46,7 +46,7 @@ api/
 ```bash
 cd api
 uv sync                              # cria .venv e instala tudo (inclui dev)
-cp .env.example .env                 # opcional
+cp .env.example .env                 # usa dev explicitamente para a demo pública local
 uv run fastapi dev app/main.py       # http://localhost:8000/docs
 uv run pytest
 uv run ruff check . && uv run ruff format .
@@ -74,6 +74,24 @@ uv add nome-do-pacote                # ou: uv add --dev nome-do-pacote
 ```
 
 **Nunca edite `requirements*.txt` à mão.** A CI falha se eles estiverem fora de sincronia com o `uv.lock`.
+
+## Ambientes e segurança
+
+`AGRISHIELD_ENVIRONMENT=dev` precisa estar definido explicitamente para manter as leituras públicas
+na demo local. Com a variável ausente, vazia ou diferente de `dev`, as rotas de fazendas,
+equipamentos, relatórios e replay exigem `X-API-Key`; `/health` continua público. A mesma chave
+configurada em `AGRISHIELD_API_KEYS` segue protegendo publicação de limites e `/audit`.
+
+Com MQTT habilitado fora de `dev`, a API falha no início se o host não for privado (IP privado ou
+DNS `.internal`/`.local`), se não houver CA TLS validável ou credenciais de usuário e senha. TLS
+valida o certificado do broker e exige TLS 1.2 ou superior. Certificado e chave de cliente são
+opcionais, mas devem ser informados juntos. Configure `AGRISHIELD_MQTT_CA_CERT`,
+`AGRISHIELD_MQTT_CLIENT_CERT`, `AGRISHIELD_MQTT_CLIENT_KEY`, `AGRISHIELD_MQTT_USERNAME` e
+`AGRISHIELD_MQTT_PASSWORD` no ambiente seguro; não os registre nem os versione.
+
+Esses guardrails protegem configuração e transporte; **não criam autenticação, autorização ou ACL
+no broker MQTT**. A ACL por dispositivo/identidade de serviço ainda precisa ser configurada no
+broker. Veja [document/contrato-mqtt.md](../document/contrato-mqtt.md).
 
 ## Base de sinistros do PSR/SISSER (D1)
 
@@ -157,10 +175,37 @@ chuva posterior ao fim da vigência mexer em alguma feature.
 | `train(df, target)` | logística e floresta, escolha pela AUC-PR de validação com **regra de um erro padrão** |
 | `evaluate(y, score, t)` | AUC-ROC, AUC-PR, recall, precisão, matriz de confusão |
 | `get_model()` / `predict_proba(...)` | o que a API usa |
+| `train_optional_neural_model(...)` / `score_optional_neural_model(...)` | experimento MLP separado; não altera o modelo publicado nem as regras |
 
 ```bash
 uv run --project .. python ../scripts/train_model.py
+# experimento MLP opt-in, sem substituir o artefato publicado
+uv run --project .. python ../scripts/train_model.py --somente-rede-opcional
 ```
+
+O treino padrão não executa a MLP. Para comparar e salvar os dois artefatos na mesma execução,
+use `--incluir-rede-opcional`. A rede tem artefato/metadados próprios
+(`risk_neural_model_v1.*`); ausência do arquivo deixa o score neural indisponível e erros ao ler
+um artefato presente são propagados.
+
+O score MLP na API também é **opt-in**, sem alterar o default da rota de risco:
+
+```text
+GET /api/v1/farms/{farm_id}/risk?include_experimental_mlp=true
+```
+
+Com a opção ligada, a resposta informa `experimental_mlp.available`, a `version` do artefato e
+uma `note`, além de `experimental_mlp_score` por dia. Esses campos são separados de
+`model_probability` e `model_version`, usam as mesmas features de
+`app/services/model_scoring.py::build_features` e não mudam nível, limite, recomendações, motivos
+ou alertas operacionais. A nota deixa claro que o score **não é uma probabilidade calibrada**. Se
+o artefato estiver ausente, a resposta indica indisponibilidade; corrupção do artefato e erro de
+inferência são propagados como falhas HTTP, sem sucesso vazio. A trilha de auditoria registra o
+valor da opção e, quando solicitados, os metadados e scores num bloco MLP separado.
+
+A interface Streamlit oferece controle individual por sessão, desligado por padrão, e mostra o
+score com a ressalva experimental. A chamada opt-in usa a mesma rota descrita acima; os campos
+operacionais continuam vindo das regras e do modelo oficial.
 
 **Resultado atual (21/09, com 2.256 linhas): o modelo supera o baseline** (AUC-PR de teste
 **0,144 × 0,074**, diferença +0,070 · IC 95% [+0,003, +0,169]). Com três ressalvas: 26 sinistros no
@@ -231,6 +276,11 @@ que falta, em vez de puxar um dia mais antigo), conforme
 `tests/fixtures/open_meteo_*.json` guarda respostas **reais** da Open-Meteo (Carmo de Minas, MG,
 capturadas em 19/09/2026). Os testes injetam um `httpx.MockTransport` no cliente, então `uv run
 pytest` funciona offline.
+O caso extremo de um `X-Request-ID` com 100 mil caracteres exercita diretamente o filtro da API,
+sem depender do limite de tamanho de cabeçalho do sistema operacional.
+
+Resultados da última validação local da API estão em
+[document/evidencias/2026-09-25-validacao-geral.md](../document/evidencias/2026-09-25-validacao-geral.md).
 
 ### Testes de ponta a ponta (I6)
 
@@ -529,15 +579,17 @@ Requisito direto do enunciado da Sprint 4. Três peças:
 
 ### 1. Controle de acesso (ADR-013)
 
-`app/core/security.py`. Chave no cabeçalho **`X-API-Key`**, obrigatória nos endpoints que
-**escrevem ou publicam** — hoje `POST /devices/{id}/limit/publish` e `GET /audit`. Leitura fica
-aberta na demo, por decisão registrada.
+`app/core/security.py`. Chave no cabeçalho **`X-API-Key`**, obrigatória nos endpoints que escrevem
+ou publicam — `POST /devices/{id}/limit/publish` e `GET /audit` — e nas leituras de fazendas,
+equipamentos, relatórios e replay quando o ambiente não é `dev`. Leituras sem chave só ficam
+públicas com `AGRISHIELD_ENVIRONMENT=dev` explícito; `/health` permanece público.
 
 - Chaves em `AGRISHIELD_API_KEYS`, separadas por vírgula.
 - Comparação em **tempo constante** (`secrets.compare_digest`, sobre bytes) e **sem sair do laço**
   na chave que casar.
 - **Falha fechada**: sem `AGRISHIELD_API_KEYS` configurada, nenhuma chave é válida e toda escrita
   é recusada. Esquecer a variável não pode virar porta aberta.
+- A mesma chave também é exigida para as leituras protegidas em produção.
 - A chave é dependência **do decorador** da rota, então o FastAPI a resolve antes de qualquer
   parâmetro: sem chave, a requisição para ali, sem tocar broker nem Open-Meteo.
 - 401 com a **mesma mensagem** para ausente, inválida e servidor sem chave, para não contar ao
@@ -658,7 +710,7 @@ apoia — sem isso, relatório vira tabela bonita que ninguém sabe usar.
 |---|---|---|
 | `GET /reports/equipment/{device_id}?days=7` | telemetria e eventos (I3) | gestor de frota e manutenção |
 | `GET /reports/region?state=MG&from_year=&to_year=` | **1,5 milhão de apólices reais** (D1) + relevo (W8) | analista da seguradora |
-| `GET /reports/crop?from_year=&to_year=&state=` | as mesmas apólices, por cultura e causa | subscrição e produto |
+| `GET /reports/crop?from_year=&to_year=&state=` | as mesmas apólices, por cultura e causa | subscrição e produto; a cultura não representa o tipo de operação nem o risco de acidente de uma máquina |
 
 Cada uma tem a gêmea `.csv`. **A exportação é para o Excel em português:** UTF-8 **com BOM** (sem
 ele os acentos quebram), separador `;` e **vírgula decimal** — as duas últimas andam juntas.

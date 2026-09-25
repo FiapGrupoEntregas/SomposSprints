@@ -10,14 +10,12 @@
 
 > **Um terreno inclinado que é seguro hoje pode capotar um trator amanhã.**
 
-## Nome do grupo
+## 👨‍🎓 Integrantes
 
-## 👨‍🎓 Integrantes: 
-- <a href="https://www.linkedin.com/company/inova-fusca">Nome do integrante 1</a>
-- <a href="https://www.linkedin.com/company/inova-fusca">Nome do integrante 2</a>
-- <a href="https://www.linkedin.com/company/inova-fusca">Nome do integrante 3</a> 
-- <a href="https://www.linkedin.com/company/inova-fusca">Nome do integrante 4</a> 
-- <a href="https://www.linkedin.com/company/inova-fusca">Nome do integrante 5</a>
+- JonattasFelipe — RM572692
+- NatanaelFilho — RM572474
+- PedroHenrique — RM571394
+- AndrewsOliveira — RM572311
 
 ## 👩‍🏫 Professores:
 ### Tutor(a) 
@@ -59,10 +57,27 @@ os intervalos e a leitura completa estão em
 [document/dados-e-modelo.md](document/dados-e-modelo.md#resultados-do-modelo-d3); a ressalva
 aparece na tela, montada a partir do próprio artefato do modelo.
 
+Há também um experimento **opt-in** com uma pequena rede neural (MLP), treinada e versionada
+separadamente por `scripts/train_model.py --somente-rede-opcional`. Ela não participa da seleção
+do modelo publicado nem altera os alertas ou limites. A API permite solicitá-la separadamente em
+`GET /api/v1/farms/{farm_id}/risk?include_experimental_mlp=true` (desligada por padrão), com score,
+versão e nota próprios; o score **não é uma probabilidade calibrada**. Artefato ausente é informado
+como indisponível e falhas de artefato/inferência não são ocultadas. A previsão de risco tem
+controle individual por sessão, desligado por padrão, e mostra o resultado MLP identificado como
+experimental e não calibrado, sem alterar os alertas ou limites oficiais.
+
 O limite de fundo é o rótulo: o que a base pública tem é **sinistro de seguro agrícola**
 (perda de lavoura), não sinistro de **máquina**. Calibrar com a base de sinistros de máquinas da
 Sompo e evoluir para o **Passaporte Digital** é o roadmap — e é exatamente o que a parceria
 destrava.
+
+> **Como interpretar os dados:** o score do modelo estima sinistros agrícolas da base PSR/SISSER,
+> não a probabilidade de acidente de uma máquina. Os relatórios por cultura usam a cultura como
+> recorte disponível na base, não como registro do tipo de operação executada pelo equipamento.
+> Na ingestão, nomes e documentos são descartados; o `proposal_id` é mantido para deduplicação e
+> reprodutibilidade e pode ser associado ao CSV público do PSR, que contém o nome. Veja as
+> limitações e decisões completas em [document/dados-e-modelo.md](document/dados-e-modelo.md) e
+> [feature/I5-seguranca-rastreabilidade.md](feature/I5-seguranca-rastreabilidade.md).
 
 ## 🧭 Funcionalidades
 
@@ -86,7 +101,7 @@ seguradora) e a **matriz de rastreabilidade** história → feature → arquivo 
 > de terceiro e canal a manter. O status de cada feature está em
 > [`feature/README.md`](feature/README.md).
 
-**Estado atual (v0.1.0):** estrutura inicial. A API responde em `/api/v1/health`, já tem o cliente Open-Meteo com cache, *stale-if-error* e agregação diária do clima (I1) e serve as três fazendas de demonstração em `/api/v1/farms` e `/api/v1/farms/{id}` (W1) e o mapa de relevo em `/api/v1/farms/{id}/terrain` — grade 10 × 10 com inclinação, orientação e classe de terreno, com cache de 24 h (W2), e a **previsão de risco em 7 dias** em `/api/v1/farms/{id}/risk` — estado do solo, limite de inclinação do dia e os perigos de **capotamento** e **atolamento** célula a célula, cada alerta com o motivo em português e com números, mais o cenário simulado `?scenario=heavy_rain` para a demo (W3, lado da API; a tela sai com o front); o front já traz o **seletor de fazenda** compartilhado entre as páginas (W1) e a aba **Relevo** do Mapa de risco, com mapa `pydeck` da grade 10 × 10 colorido por inclinação ou por classe de terreno, tooltip por célula, KPIs (amplitude, inclinação máxima, % da área ≥ 15°) e legenda (W2), e a aba **Previsão de risco**, com a faixa dos 7 dias, o mapa das células por nível, o gráfico de chuva (dia e 72 h) e o toggle de cenário simulado devidamente sinalizado (W3), o filtro de perigos com ícones para raio, vento e incêndio (W7) e o card **O que fazer** com as janelas seguras e o aviso de que elas não liberam as áreas vermelhas (W6), a página **Equipamento ao vivo** com o card do limite do dia e o botão que envia o limite ao ESP32 (W4) e o painel ao vivo com status, banner de nível, gráfico de 10 min, eventos e alerta de capotamento (W5), a página **Subscrição** com o selo de classe, os drivers e a carteira ordenada pelo score (W8) e a página **Relatórios**, com os três recortes (equipamento, região e cultura), o `purpose` de cada um e o download em CSV gerado pela API (W12), além do cartão da probabilidade do modelo ao lado do nível por regras, com a ressalva montada a partir do artefato (W13), a seção **Passaporte (prévia)** com o histórico do equipamento e a ressalva de roadmap (W11), e a página **Replay de acidentes**, que roda o motor sobre cinco acidentes reais noticiados e mostra o veredito no ponto e na vizinhança com as limitações à vista (W9); e o firmware mede a inclinação com o MPU6050 a 10 Hz (E1), faz o alerta local com LEDs, buzzer e evento `tilt_alert` (E2), aplica o limite do dia recebido no `config` retained com validação e persistência na NVS (E3) publica telemetria a cada 5 s, com `ts` do NTP (E4), detecta capotamento por inclinação sustentada ou impacto, travando o alerta máximo e enviando o evento `rollover` com os 30 s de contexto (E5), mede o microclima com o DHT22 para publicar as condições da regra dos 30 (E6), mostra tudo num display OLED (E7) e registra ocorrências do operador com um toque no botão, também com 30 s de contexto (E8). **O firmware está completo: E1 a E8.** Do lado da integração, a **ponte MQTT já liga a API ao equipamento**: a API assina telemetria, eventos e status no broker público, valida cada payload, deduplica os eventos que o ESP32 manda em triplicata e publica o `config` com QoS 1 e retained (I2); tudo o que chega é gravado em SQLite nas tabelas `telemetry`, `device_event`, `device_status` e `published_config`, com retenção de 7 dias para a telemetria (I3) — e a API sobe normalmente mesmo com o broker fora do ar. Com isso, o ciclo fecha: a API calcula o **limite de inclinação do dia de cada equipamento** e o publica retained no `config` — no boot, a cada 1 h e pelo botão de envio manual, com `date` e `scenario` para a demo do dia chuvoso (W4) — e expõe o **painel ao vivo** em `/api/v1/devices/{id}/status`, `/telemetry/latest`, `/telemetry?minutes=10` e `/events`, com offline por LWT ou por 20 s de silêncio (W5). O motor de risco agora avalia **cinco perigos** por célula — capotamento, atolamento, raio, vento e incêndio pela regra dos 30, este último subindo de 🟡 para 🔴 nas encostas de 15° ou mais (W7) — e a API traduz tudo em ação: `GET /api/v1/farms/{id}/recommendations` devolve as **janelas seguras** de hoje e amanhã e as orientações em português, sempre lembrando que as áreas vermelhas seguem proibidas mesmo dentro da janela (W6). Cada equipamento acumula ainda um **histórico** — horas operando, tempo acima do limite, alertas, capotamentos e a linha do tempo dos eventos —, que é a **prévia do Passaporte Digital** e liga a entrega ao roadmap (W11). O motor roda também **sobre o passado**: `POST /api/v1/replay` aplica as mesmas regras à data e ao local de **5 acidentes reais noticiados** e responde "o sistema teria alertado?" — hoje **2 de 5 no ponto e 3 de 5 na grade**, com os "não" explicados em vez de escondidos (W9). E, ao lado do nível por regras, cada dia traz a **probabilidade do modelo** treinado com **2.256 apólices** reais do PSR, sempre acompanhada da ressalva de que ele **superou** o baseline por regras no teste de 2024 por pouco e com 26 sinistros — as regras seguem sendo a base do alerta ao operador (W13). Para a seguradora, a API entrega ainda o **perfil de subscrição** de cada fazenda (`/underwriting`: indicadores do relevo, score 0–100 e classe A/B/C) e três **relatórios com tendências** — por equipamento, por região e por cultura —, estes últimos calculados sobre as **1.525.473 apólices reais** do PSR já carregadas, com exportação em CSV pronta para o Excel (W8 e W12). Fechando o requisito de **segurança e rastreabilidade** do enunciado, a API exige `X-API-Key` para publicar limite e consultar a auditoria, responde com log estruturado em JSON e um `X-Request-ID` em toda resposta, e grava **toda decisão** — score de risco, limite publicado e alerta do equipamento — na tabela `decision_log`, com entrada, saída e a versão da regra que decidiu, além do hash SHA-256 dos eventos recebidos (I5). Do lado dos dados, a **base de sinistros reais já está carregada**: 1.525.473 apólices do PSR/SISSER (2006–2025) na tabela `policy` do SQLite, com coordenada, cultura, vigência, valor indenizado e causa normalizada, e sem nenhum dado pessoal (D1). E a integração está **validada de ponta a ponta**: o simulador de dispositivo (`scripts/simulate_device.py`) publica no mesmo contrato do firmware e os testes `e2e` comprovam 100/100 mensagens gravadas numa rajada, payload inválido descartado sem derrubar a ponte, capotamento gravado uma única vez com os 30 s de contexto e trilha de auditoria, e a volta da coleta depois de uma queda — com os tempos medidos: limite no equipamento em 0,31 s e nível novo disponível ao painel em 0,39 s (I6). As evidências estão em [document/evidencias/](document/evidencias/).
+**Estado atual:** o projeto já contém a API, o front Streamlit, a ingestão/modelo de dados, a ponte MQTT e o firmware descritos nesta seção; os status por feature e os itens ainda pendentes estão em [`feature/README.md`](feature/README.md). A cópia editada perdida não está disponível para um diff exato. O que foi reconstruído e o que já existia na cópia preservada estão separados em [document/historico-reconstrucao.md](document/historico-reconstrucao.md). A última verificação local (testes, build e smoke test) e os avisos não bloqueantes estão em [document/evidencias/2026-09-25-validacao-geral.md](document/evidencias/2026-09-25-validacao-geral.md).
 
 ## 🏗️ Arquitetura
 
@@ -105,6 +120,28 @@ Detalhes, fluxos e endpoints em [document/arquitetura.md](document/arquitetura.m
 **Dados reais:** o modelo é calibrado com as apólices e indenizações do **PSR/SISSER** (Ministério da
 Agricultura, dados abertos CC-BY, 2006–2025), que trazem coordenada da propriedade, cultura, período
 de vigência, valor indenizado e causa do sinistro.
+
+### Limites de segurança
+
+A configuração pública HiveMQ sem TLS/autenticação serve **somente à demo com dados sintéticos**:
+mensagens e comandos MQTT podem ser lidos ou forjados por terceiros. Não conecte equipamento real
+nesse broker. Em produção, MQTT habilitado exige na API host privado, TLS validado por CA e
+credenciais próprias; as leituras de fazendas, equipamentos, relatórios e replay também exigem
+`X-API-Key` fora de `AGRISHIELD_ENVIRONMENT=dev` explícito (`/health` permanece público). Configure
+ACL por dispositivo no próprio broker: **a conexão segura da API não cria autenticação nem ACL no
+broker MQTT**. Leia
+[document/contrato-mqtt.md](document/contrato-mqtt.md) e [document/decisoes.md](document/decisoes.md)
+antes de qualquer implantação. A chave de API compartilhada do MVP não substitui identidade de
+usuário nem autorização por organização/dispositivo.
+
+### Simulação pública do ESP32 no Wokwi
+
+Projeto com firmware, circuito e bibliotecas do AgriShield: [abrir a simulação](https://wokwi.com/projects/476164477397501953).
+A validação manual do inclinômetro e seus limites está registrada em
+[document/evidencias/2026-09-25-inclinometro-wokwi.md](document/evidencias/2026-09-25-inclinometro-wokwi.md).
+Em uma execução posterior, Wi-Fi, MQTT com broker público, aplicação de configuração retained e
+publicação de `limit_applied` e de telemetrias sequenciais em intervalos de 5 s funcionaram; a
+integração com a API e o painel ainda não foi validada nessa simulação.
 
 ## 📁 Estrutura de pastas
 
@@ -185,11 +222,13 @@ uv sync && uv run streamlit run app.py
 
 Em vez de exportar, você pode copiar `front-web/.env.example` para `front-web/.env` e preencher: o
 front carrega esse arquivo no início (como a API faz com o dela). Variável já exportada no terminal
-**vence** o arquivo. Sem a chave, a leitura funciona e só o envio do limite ao ESP32 é recusado com 401.
+**vence** o arquivo. No modo local `AGRISHIELD_ENVIRONMENT=dev`, as leituras continuam públicas e
+só o envio do limite ao ESP32 exige a chave. Fora de `dev`, o front também precisa enviar
+`X-API-Key` em todas as leituras protegidas.
 
 Para o botão **"Enviar ao equipamento"** funcionar, exporte também `AGRISHIELD_API_KEY` com uma das
-chaves de `AGRISHIELD_API_KEYS` configuradas na API (I5). Sem ela, a leitura continua normal e só o
-envio é recusado, com a tela dizendo o que configurar.
+chaves de `AGRISHIELD_API_KEYS` configuradas na API (I5). Em `dev`, sem ela as leituras continuam
+normais e só o envio é recusado, com a tela dizendo o que configurar.
 
 ### 3. Dispositivo (ESP32 no Wokwi)
 

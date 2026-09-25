@@ -18,6 +18,8 @@ from app.core.clock import today_local
 from app.main import app
 from app.schemas.risk import SoilState
 from app.services import farms as farms_service
+from app.services import model as model_service
+from app.services import model_scoring
 from app.services.risk import PAST_DAYS, tilt_limit
 from app.services.terrain import GRID_SIZE, clear_terrain_cache
 from tests.conftest import FIXTURES_DIR, RequestRecorder, load_fixture
@@ -84,8 +86,10 @@ def today() -> date:
 def clean_terrain_cache() -> Iterator[None]:
     """O relevo fica 24 h em cache: cada teste começa com ele vazio."""
     clear_terrain_cache()
+    model_service.get_optional_neural_model.cache_clear()
     yield
     clear_terrain_cache()
+    model_service.get_optional_neural_model.cache_clear()
     app.dependency_overrides.clear()
 
 
@@ -93,10 +97,13 @@ def clean_terrain_cache() -> Iterator[None]:
 def api(
     make_client: ClientFactory,
 ) -> Callable[[Callable[[httpx.Request], httpx.Response]], TestClient]:
-    def factory(handler: Callable[[httpx.Request], httpx.Response]) -> TestClient:
+    def factory(
+        handler: Callable[[httpx.Request], httpx.Response],
+        raise_server_exceptions: bool = True,
+    ) -> TestClient:
         open_meteo = make_client(handler)
         app.dependency_overrides[get_open_meteo_client] = lambda: open_meteo
-        return TestClient(app)
+        return TestClient(app, raise_server_exceptions=raise_server_exceptions)
 
     return factory
 
@@ -143,6 +150,7 @@ def test_every_day_carries_the_summary_the_front_needs(
         "model_probability",
         "model_version",
         "model_drivers",
+        "experimental_mlp_score",
     }
     assert set(day["pct_levels"]) == {"green", "yellow", "red"}
     assert day["soil_state"] in {"dry", "moist", "saturated"}
@@ -189,6 +197,128 @@ def test_days_parameter_limits_the_window(api: Callable[..., TestClient], today:
     body = client.get(RISK_URL, params={"days": 1}).json()
 
     assert [day["date"] for day in body["days"]] == [today.isoformat()]
+
+
+def test_experimental_mlp_is_disabled_by_default(
+    api: Callable[..., TestClient], today: date, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def unexpected_load() -> None:
+        pytest.fail("A MLP opcional não deve ser carregada sem opt-in.")
+
+    monkeypatch.setattr(model_service, "load_optional_neural_model", unexpected_load)
+    client = api(open_meteo_handler(today))
+
+    response = client.get(RISK_URL)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["experimental_mlp"] is None
+    assert all(day["experimental_mlp_score"] is None for day in body["days"])
+
+
+def test_experimental_mlp_returns_separate_score_version_and_note(
+    api: Callable[..., TestClient], today: date, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    captured_features: list[dict] = []
+    built_features: list[dict] = []
+    monkeypatch.setattr(model_service, "load_optional_neural_model", lambda: object())
+    monkeypatch.setattr(model_service, "NEURAL_MODEL_VERSION", "v-experimental-test")
+    original_build_features = model_scoring.build_features
+
+    def capture_build_features(farm, terrain, day) -> dict:
+        features = original_build_features(farm, terrain, day)
+        built_features.append(features)
+        return features
+
+    def score(_: object, features: dict) -> float:
+        captured_features.append(features)
+        return 0.73126
+
+    monkeypatch.setattr(model_scoring, "build_features", capture_build_features)
+    monkeypatch.setattr(model_service, "score_optional_neural_model", score)
+    client = api(open_meteo_handler(today))
+
+    response = client.get(RISK_URL, params={"include_experimental_mlp": "true", "days": 1})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["experimental_mlp"]["available"] is True
+    assert body["experimental_mlp"]["version"] == "v-experimental-test"
+    assert "não é uma probabilidade calibrada" in body["experimental_mlp"]["note"]
+    assert body["days"][0]["experimental_mlp_score"] == 0.7313
+    assert "probability" not in body["experimental_mlp"]
+    assert len(captured_features) == 1
+    assert captured_features[0] == built_features[-1]
+
+
+def test_enabled_and_disabled_mlp_keep_official_risk_fields_identical(
+    api: Callable[..., TestClient], today: date, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(model_service, "load_optional_neural_model", lambda: object())
+    monkeypatch.setattr(model_service, "score_optional_neural_model", lambda *_: 0.42)
+    client = api(open_meteo_handler(today))
+
+    recommendations_before = client.get(
+        f"/api/v1/farms/{DEMO_FARM_ID}/recommendations", params={"days": 1}
+    ).json()
+    disabled = client.get(RISK_URL).json()
+    enabled = client.get(RISK_URL, params={"include_experimental_mlp": True}).json()
+    recommendations_after = client.get(
+        f"/api/v1/farms/{DEMO_FARM_ID}/recommendations", params={"days": 1}
+    ).json()
+
+    assert disabled["model"] == enabled["model"]
+    for disabled_day, enabled_day in zip(disabled["days"], enabled["days"], strict=True):
+        assert {
+            key: value for key, value in disabled_day.items() if key != "experimental_mlp_score"
+        } == {key: value for key, value in enabled_day.items() if key != "experimental_mlp_score"}
+        assert enabled_day["experimental_mlp_score"] == 0.42
+    assert recommendations_before == recommendations_after
+
+
+def test_opt_in_without_neural_artifact_reports_unavailability(
+    api: Callable[..., TestClient], today: date, monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    monkeypatch.setattr(model_service, "NEURAL_MODEL_PATH", tmp_path / "missing.joblib")
+    client = api(open_meteo_handler(today))
+
+    response = client.get(RISK_URL, params={"include_experimental_mlp": True, "days": 1})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["experimental_mlp"]["available"] is False
+    assert body["experimental_mlp"]["version"] is None
+    assert "artefato mlp experimental ausente" in body["experimental_mlp"]["note"].lower()
+    assert body["days"][0]["experimental_mlp_score"] is None
+
+
+def test_corrupted_neural_artifact_is_an_error_not_a_success_response(
+    api: Callable[..., TestClient], today: date, monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    corrupted_model = tmp_path / "corrupted.joblib"
+    corrupted_model.write_bytes(b"not a joblib model")
+    monkeypatch.setattr(model_service, "NEURAL_MODEL_PATH", corrupted_model)
+    client = api(open_meteo_handler(today), raise_server_exceptions=False)
+
+    response = client.get(RISK_URL, params={"include_experimental_mlp": True})
+
+    assert response.status_code == 500
+
+
+def test_neural_inference_failure_is_visible_as_an_error(
+    api: Callable[..., TestClient], today: date, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(model_service, "load_optional_neural_model", lambda: object())
+
+    def fail_inference(*_: object) -> float:
+        raise ValueError("inferência MLP falhou")
+
+    monkeypatch.setattr(model_service, "score_optional_neural_model", fail_inference)
+    client = api(open_meteo_handler(today), raise_server_exceptions=False)
+
+    response = client.get(RISK_URL, params={"include_experimental_mlp": True})
+
+    assert response.status_code == 500
 
 
 @pytest.mark.parametrize("days", [0, 8, -1])

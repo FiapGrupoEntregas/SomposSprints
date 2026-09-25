@@ -25,6 +25,8 @@ Aqui ficam as práticas e decisões que **todo o time segue**. Na dúvida, vale 
 | [user-stories.md](user-stories.md) | Histórias por perfil e matriz de rastreabilidade | Todos |
 | [entregaveis.md](entregaveis.md) | Checklist dos entregáveis do enunciado da Sprint 4 | Todos |
 | [backlog-pos-entrega.md](backlog-pos-entrega.md) | Sugestões do revisor que ficaram **fora** do escopo de cada feature, com o motivo | Dev |
+| [historico-reconstrucao.md](historico-reconstrucao.md) | O que já existia na cópia preservada, o que foi reconstruído nesta sessão e o que não pôde ser comparado à cópia perdida | Todos |
+| [evidencias/2026-09-25-validacao-geral.md](evidencias/2026-09-25-validacao-geral.md) | Resultados de lint, testes, build e smoke test local, com avisos e limitações | Todos |
 | [evidencias/](evidencias/README.md) | Relatórios de validação e prints usados na entrega | Todos |
 
 ## Regras de ouro

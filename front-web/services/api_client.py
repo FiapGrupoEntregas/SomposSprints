@@ -97,14 +97,18 @@ class ApiClient:
         farm_id: str,
         days: int = DEFAULT_FORECAST_DAYS,
         scenario: str | None = None,
+        include_experimental_mlp: bool = False,
     ) -> dict:
         """Previsão de risco (`GET /api/v1/farms/{farm_id}/risk`) — W3.
 
-        Sem cenário o parâmetro `scenario` é omitido: a API recusa um valor vazio.
+        Sem cenário o parâmetro `scenario` é omitido: a API recusa um valor vazio. A MLP só é
+        solicitada quando o usuário a habilita explicitamente.
         """
         params: dict[str, Any] = {"days": days}
         if scenario:
             params["scenario"] = scenario
+        if include_experimental_mlp:
+            params["include_experimental_mlp"] = True
         return self._get(f"/farms/{farm_id}/risk", params=params)
 
     def get_recommendations(
@@ -340,9 +344,15 @@ def get_risk(
     farm_id: str,
     days: int = DEFAULT_FORECAST_DAYS,
     scenario: str | None = None,
+    include_experimental_mlp: bool = False,
 ) -> dict:
-    """Previsão de risco dia a dia e célula a célula (cache de 1 h por fazenda e cenário)."""
-    return get_api().get_risk(farm_id, days=days, scenario=scenario)
+    """Previsão e, opcionalmente, MLP experimental (cache separado por opção)."""
+    return get_api().get_risk(
+        farm_id,
+        days=days,
+        scenario=scenario,
+        include_experimental_mlp=include_experimental_mlp,
+    )
 
 
 @st.cache_data(ttl=LIMIT_TTL_SECONDS, show_spinner=False)

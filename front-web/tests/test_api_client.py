@@ -112,6 +112,24 @@ def test_get_risk_sends_days_and_scenario() -> None:
     assert forecast["scenario"] == "heavy_rain"
 
 
+def test_get_risk_sends_experimental_mlp_only_when_enabled() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert dict(request.url.params) == {"days": "7", "include_experimental_mlp": "true"}
+        return httpx.Response(
+            200,
+            json={
+                "farm_id": "cafe-carmo-de-minas",
+                "generated_at": "2026-09-19T21:00:00-03:00",
+                "scenario": None,
+                "days": [],
+            },
+        )
+
+    forecast = make_client(handler).get_risk("cafe-carmo-de-minas", include_experimental_mlp=True)
+
+    assert forecast["scenario"] is None
+
+
 def test_get_risk_omits_scenario_when_it_is_the_real_forecast() -> None:
     """A API recusa `scenario` vazio, então o parâmetro não pode ser enviado."""
 

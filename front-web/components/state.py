@@ -23,3 +23,6 @@ SELECTED_DATE_KEY = "selected_day_date"
 
 # Cenário simulado ligado pelo usuário (`heavy_rain` ou nada).
 SCENARIO_KEY = "risk_scenario_heavy_rain"
+
+# Controle individual da MLP experimental na sessão atual.
+EXPERIMENTAL_MLP_KEY = "risk_experimental_mlp_enabled"

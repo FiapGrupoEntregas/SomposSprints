@@ -27,6 +27,7 @@ from typing import Any
 import joblib
 import numpy as np
 import pandas as pd
+from sklearn import __version__ as SKLEARN_VERSION
 from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.impute import SimpleImputer
@@ -39,8 +40,10 @@ from sklearn.metrics import (
     recall_score,
     roc_auc_score,
 )
+from sklearn.neural_network import MLPClassifier
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.utils.class_weight import compute_sample_weight
 
 # Os limiares do baseline vêm do módulo das regras (W3), não de cópias: se a regra mudar lá, o
 # baseline muda junto, e a comparação continua justa.
@@ -61,6 +64,14 @@ MODEL_VERSION = "v1"
 MODEL_DIR = Path(__file__).resolve().parent.parent / "data" / "model"
 MODEL_PATH = MODEL_DIR / f"risk_model_{MODEL_VERSION}.joblib"
 METADATA_PATH = MODEL_DIR / f"risk_model_{MODEL_VERSION}.json"
+NEURAL_MODEL_VERSION = "v1"
+NEURAL_MODEL_PATH = MODEL_DIR / f"risk_neural_model_{NEURAL_MODEL_VERSION}.joblib"
+NEURAL_METADATA_PATH = MODEL_DIR / f"risk_neural_model_{NEURAL_MODEL_VERSION}.json"
+
+# Experimento complementar fixo. Não participa da seleção nem da publicação do modelo principal.
+NEURAL_HIDDEN_LAYER_SIZES = (8,)
+NEURAL_ALPHA = 10.0
+NEURAL_MAX_ITER = 1000
 
 #: Divisão temporal. 2025 **não** entra: as apólices estão em vigência e a ausência de indenização
 #: é censura, não rótulo 0 (ver document/dados-e-modelo.md §1).
@@ -384,6 +395,131 @@ def candidate_models(seed: int = 42) -> dict[str, Any]:
     }
 
 
+@dataclass
+class OptionalNeuralResult:
+    """Resultado isolado da rede pequena; não altera o modelo escolhido pela D3."""
+
+    target: str
+    threshold: float
+    seed: int
+    pipeline: Any = field(repr=False)
+    split_sizes: dict[str, int] = field(default_factory=dict)
+    validation: dict[str, dict] = field(default_factory=dict)
+    test: dict[str, dict] = field(default_factory=dict)
+
+
+def train_optional_neural_model(
+    df: pd.DataFrame, target: str = TARGET_CLAIM, seed: int = 42
+) -> OptionalNeuralResult:
+    """Treina uma MLP pequena, escolhe o limiar na validação e só então mede o teste.
+
+    A arquitetura e a regularização são fixas. O experimento não participa da seleção publicada
+    entre regressão logística e floresta, e o conjunto de teste não seleciona nem ajusta nada.
+    """
+    split = temporal_split(df)
+    if split.train.empty or split.validation.empty:
+        raise ValueError(
+            "Divisão temporal vazia: o dataset precisa de apólices até 2021 e de 2022–2023."
+        )
+
+    numeric, categorical = feature_columns(df)
+    features = numeric + categorical
+    y_train = split.train[target].astype(int)
+    y_validation = split.validation[target].astype(int)
+    if y_train.nunique() < 2:
+        raise ValueError("O treino da rede opcional precisa conter as duas classes.")
+
+    pipeline = build_pipeline(
+        MLPClassifier(
+            hidden_layer_sizes=NEURAL_HIDDEN_LAYER_SIZES,
+            alpha=NEURAL_ALPHA,
+            max_iter=NEURAL_MAX_ITER,
+            early_stopping=False,
+            random_state=seed,
+        ),
+        numeric,
+        categorical,
+    )
+    sample_weight = compute_sample_weight(class_weight="balanced", y=y_train)
+    pipeline.fit(split.train[features], y_train, clf__sample_weight=sample_weight)
+
+    validation_score = pipeline.predict_proba(split.validation[features])[:, 1]
+    threshold = choose_threshold(y_validation, validation_score)
+    baseline_validation_score = baseline_score(split.validation)
+    baseline_threshold = choose_threshold(y_validation, baseline_validation_score)
+    validation = {
+        "baseline_regras": evaluate(
+            y_validation, baseline_validation_score, baseline_threshold
+        ).as_dict(),
+        "rede_neural_opcional": evaluate(y_validation, validation_score, threshold).as_dict(),
+    }
+
+    test: dict[str, dict] = {}
+    if not split.test.empty:
+        y_test = split.test[target].astype(int)
+        baseline_test_score = baseline_score(split.test)
+        neural_test_score = pipeline.predict_proba(split.test[features])[:, 1]
+        test = {
+            "baseline_regras": evaluate(y_test, baseline_test_score, baseline_threshold).as_dict(),
+            "rede_neural_opcional": evaluate(y_test, neural_test_score, threshold).as_dict(),
+        }
+
+    return OptionalNeuralResult(
+        target=target,
+        threshold=threshold,
+        seed=seed,
+        pipeline=pipeline,
+        split_sizes=split.sizes(),
+        validation=validation,
+        test=test,
+    )
+
+
+def save_optional_neural_model(
+    result: OptionalNeuralResult,
+    dataset_path: str,
+    rows: int,
+    directory: Path | None = None,
+):
+    """Salva o artefato neural separado e metadados calculados no corte temporal."""
+    directory = directory or MODEL_DIR
+    directory.mkdir(parents=True, exist_ok=True)
+    model_path = directory / f"risk_neural_model_{NEURAL_MODEL_VERSION}.joblib"
+    metadata_path = directory / f"risk_neural_model_{NEURAL_MODEL_VERSION}.json"
+    joblib.dump(result.pipeline, model_path)
+
+    numeric, categorical = declared_features()
+    metadata = {
+        "version": NEURAL_MODEL_VERSION,
+        "model_type": "MLPClassifier",
+        "architecture": {
+            "hidden_layer_sizes": list(NEURAL_HIDDEN_LAYER_SIZES),
+            "alpha": NEURAL_ALPHA,
+            "max_iter": NEURAL_MAX_ITER,
+            "early_stopping": False,
+        },
+        "trained_at": datetime.now(UTC).isoformat(timespec="seconds"),
+        "seed": result.seed,
+        "scikit_learn_version": SKLEARN_VERSION,
+        "dataset": {"path": dataset_path, "rows": rows},
+        "target": result.target,
+        "split": {
+            "train": f"<= {TRAIN_MAX_YEAR}",
+            "validation": list(VALIDATION_YEARS),
+            "test": TEST_YEAR,
+            "sizes": result.split_sizes,
+        },
+        "features": {"numeric": numeric, "categorical": categorical},
+        "threshold": result.threshold,
+        "validation": result.validation,
+        "test": result.test,
+        "test_used_for_selection_or_tuning": False,
+        "role": "experimento complementar; não selecionado nem usado pela API/W13",
+    }
+    metadata_path.write_text(json.dumps(metadata, ensure_ascii=False, indent=2), encoding="utf-8")
+    return model_path, metadata_path
+
+
 def bootstrap_pr_auc_se(y_true, score_a, score_b, seed: int = 42) -> float:
     """Erro padrão da **diferença** de AUC-PR entre dois scores, por bootstrap pareado.
 
@@ -681,9 +817,39 @@ def load_model(path: Path | None = None):
         return None
     try:
         return joblib.load(path)
-    except Exception:  # noqa: BLE001 — artefato corrompido não pode derrubar a API
+    except Exception:  # noqa: BLE001 — o comportamento legado do modelo publicado é mantido
         logger.exception("Falha ao carregar o modelo em %s; seguindo só com as regras.", path)
         return None
+
+
+def load_optional_neural_model(path: Path | None = None):
+    """Carrega a rede experimental; só a ausência é tratada como fallback seguro."""
+    path = path or NEURAL_MODEL_PATH
+    if not path.exists():
+        logger.warning("Artefato da rede neural opcional não encontrado em %s.", path)
+        return None
+    return joblib.load(path)
+
+
+@lru_cache(maxsize=1)
+def get_optional_neural_model():
+    """Carrega o artefato experimental uma vez por processo; corrupção é propagada."""
+    return load_optional_neural_model()
+
+
+def score_optional_neural_model(model, features: dict | pd.DataFrame) -> float | None:
+    """Pontua uma apólice com a rede opcional; ausência retorna `None`, falhas são explícitas."""
+    if model is None:
+        return None
+    frame = pd.DataFrame([features]) if isinstance(features, dict) else features.copy()
+    numeric, categorical = declared_features()
+    for column in numeric + categorical:
+        if column not in frame.columns:
+            frame[column] = np.nan
+    score = float(model.predict_proba(frame[numeric + categorical])[:, 1][0])
+    if not np.isfinite(score) or not 0.0 <= score <= 1.0:
+        raise ValueError(f"A rede neural retornou um score inválido: {score!r}.")
+    return score
 
 
 @lru_cache(maxsize=1)

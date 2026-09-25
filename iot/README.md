@@ -14,7 +14,8 @@ iot/
 ├── platformio.ini    # build no PlatformIO (placa esp32dev, bibliotecas)
 ├── diagram.json      # circuito do Wokwi
 ├── wokwi.toml        # liga o firmware compilado ao simulador (VS Code)
-└── libraries.txt     # bibliotecas para o Wokwi web (mesma lista do lib_deps)
+├── libraries.txt     # bibliotecas para o Wokwi web (mesma lista do lib_deps)
+└── include/          # configuração MQTT TLS local, ignorada pelo Git
 ```
 
 ## Circuito
@@ -39,24 +40,68 @@ Se mudar um pino, atualize **ao mesmo tempo** o `diagram.json`, as constantes `P
 
 1. Instale as extensões **PlatformIO IDE** e **Wokwi Simulator** no VS Code. O Wokwi pede uma licença gratuita na primeira vez.
 2. Abra a pasta `iot/` no VS Code.
-3. Compile: botão ✓ da barra do PlatformIO, ou `pio run` no terminal.
+3. Compile o modo demo: botão ✓ da barra do PlatformIO, ou `pio run` no terminal.
 4. `F1` → **Wokwi: Start Simulator**. O simulador usa o `wokwi.toml` e o `diagram.json`.
 
+### MQTT TLS opt-in (hardware/infraestrutura configurados)
+
+O build padrão (`esp32dev`) e o Wokwi web mantêm o broker HiveMQ público em **MQTT sem TLS e sem
+autenticação**, exclusivamente como demo de desenvolvimento. Não transmita informação pessoal ou
+segredos nesse modo.
+
+Para usar TLS em hardware, obtenha as credenciais Wi-Fi e, do operador do broker por um canal
+privado, o host, a porta TLS, usuário, senha e certificado CA raiz correto. Crie localmente
+`iot/include/mqtt_tls_config.h` definindo `AGRISHIELD_WIFI_SSID`, `AGRISHIELD_WIFI_PASSWORD`,
+`AGRISHIELD_MQTT_TLS_HOST`, `AGRISHIELD_MQTT_TLS_PORT`, `AGRISHIELD_MQTT_TLS_USERNAME`,
+`AGRISHIELD_MQTT_TLS_PASSWORD` e `AGRISHIELD_MQTT_TLS_CA_CERT` com esses valores provisionados. O
+certificado CA deve ser um PEM em literal C++; o arquivo está no `.gitignore`. Não o envie ao Git,
+não cole credenciais ou certificados de produção em issues, logs ou no projeto Wokwi. Não há CA,
+broker TLS ou credenciais de exemplo no repositório.
+
+Compile o perfil TLS explicitamente, depois de criar essa configuração local:
+
+```bash
+pio run -e esp32dev-tls
+```
+
+Sem o arquivo e as sete definições o perfil TLS falha no build intencionalmente, em vez de recorrer
+a uma conexão sem validação. `WiFiClientSecure` valida o broker com `setCACert()`; não há fallback
+inseguro. O perfil aguarda o relógio NTP ficar válido antes da conexão, para que a validade temporal
+do certificado também possa ser verificada. O perfil TLS precisa de um broker TLS provisionado e não
+é o caminho de execução do Wokwi web.
+
+O PlatformIO fixa Espressif32 **6.13.0** e as versões exatas de bibliotecas observadas no build
+validado: PubSubClient 2.8.0, Adafruit MPU6050 2.2.9, Adafruit Unified Sensor 1.1.15, DHT sensor
+library 1.4.7, ArduinoJson 7.4.3, Adafruit SSD1306 2.5.17 e Adafruit GFX Library 1.12.6. O TLS usa
+o `WiFiClientSecure` do core Arduino-ESP32 e não acrescenta biblioteca externa.
+
 ## Opção 2: Wokwi no navegador (mais rápido para o time testar)
+
+Projeto público salvo com o firmware, circuito e bibliotecas desta pasta:
+[AgriShield ESP32 no Wokwi](https://wokwi.com/projects/476164477397501953).
 
 1. Acesse https://wokwi.com e crie um projeto **ESP32** novo.
 2. Cole o conteúdo de `src/main.ino` no `sketch.ino`.
 3. Substitua o `diagram.json` pelo deste repositório.
 4. Crie o arquivo `libraries.txt` (menu ▾ ao lado das abas, ou aba *Library Manager*) com o conteúdo do nosso `libraries.txt`.
-5. Clique em ▶. O Serial Monitor deve mostrar `[wifi] conectado` e `[mqtt] conectado`.
+5. Clique em ▶. O Serial Monitor deve mostrar `[mqtt] modo DEMO: MQTT em texto claro, somente para
+   desenvolvimento/Wokwi`, `[wifi] conectado` e `[mqtt] conectado`.
+
+> Na validação de 25/09/2026, uma primeira execução teve `ERR_CONNECTION_CLOSED`, mas uma execução
+> posterior conectou ao Wi-Fi e ao broker MQTT, aplicou uma configuração retained e publicou
+> `limit_applied` e telemetrias seq 1–5 com intervalo de 5 s. Isso não comprova o recebimento pela
+> API nem a atualização do painel. Os resultados estão em
+> [document/evidencias/2026-09-25-inclinometro-wokwi.md](../document/evidencias/2026-09-25-inclinometro-wokwi.md).
 
 ## Simulando inclinação
 
 Durante a simulação, clique no MPU6050 e ajuste a aceleração. Para inclinar lateralmente (roll) em θ
 graus, use **Y = sen θ** e **Z = cos θ** (X = 0):
 
-> Use **3 casas decimais** nos campos do MPU6050 (dá para digitar o valor, além de arrastar o
-> slider). Com 2 casas, `Y = 0.17 / Z = 0.98` vira 9,84° e não chega a cruzar o limite de 10°.
+> A tabela mostra pares teóricos. No controle do Wokwi web usado em 25/09, os sliders aceitam
+> incrementos de **0,05 g** e rejeitam valores fora desse passo. Para reproduzir as medições dentro
+> da tolerância de E1 com esse controle, use os pares efetivamente testados na
+> [evidência do Wokwi](../document/evidencias/2026-09-25-inclinometro-wokwi.md).
 
 | Inclinação | accel Y (g) | accel Z (g) | Lido | Uso na demo (limite 10°, `warn_ratio` 0,8) |
 |---|---|---|---|---|
@@ -180,8 +225,11 @@ ao operador com **3 bipes curtos** (80 ms ligado, 120 ms desligado), temporizado
 
 ## Acompanhando as mensagens MQTT
 
-- Navegador: HiveMQ WebSocket Client (http://www.hivemq.com/demos/websocket-client/). Conecte e assine `agrishield/fiap-sompo-2026/#`.
-- Terminal: `mosquitto_sub -h broker.hivemq.com -t 'agrishield/fiap-sompo-2026/#' -v`.
+- Navegador: HiveMQ WebSocket Client (http://www.hivemq.com/demos/websocket-client/). Conecte e assine `agrishield/fiap-sompo-2026/#` **somente para a demo em texto claro**.
+- Terminal (demo sem TLS): `mosquitto_sub -h broker.hivemq.com -p 1883 -t 'agrishield/fiap-sompo-2026/#' -v`.
+- Para validar TLS, use um cliente MQTT configurado com o mesmo host/porta, CA e credenciais privadas
+  provisionadas para o perfil TLS. Não inclua os segredos diretamente em comandos salvos no
+  histórico do shell ou neste README.
 
 ### Recebendo o limite do dia (E3)
 
@@ -202,11 +250,14 @@ mosquitto_pub -h broker.hivemq.com -r -n \
 
 | O que o firmware faz | Faixa aceita |
 |---|---|
-| `tilt_limit_deg` | **[3°, 45°]**. Fora disso, loga `[config] limite invalido` e mantém o atual |
+| `tilt_limit_deg` | Obrigatório; **[3°, 45°]** e numérico. Ausente, de outro tipo ou fora da faixa faz ignorar a mensagem inteira |
 | `warn_ratio` | **[0,5, 0,95]**. Ausente ou inválido, mantém o atual |
-| `valid_until` vencido | continua usando o limite e loga `[config] limite vencido` (só depois do NTP sincronizar). Aceita inteiro ou decimal; um `config` **sem** o campo zera o vencimento em vez de herdar o anterior |
+| `valid_until` vencido | continua usando o limite e loga `[config] limite vencido` (só depois do NTP sincronizar). Aceita epoch inteiro (inclusive decimal integral); valor fracionário, negativo, não numérico ou fora de 32 bits é ignorado e mantém o vencimento atual. Um `config` **sem** o campo zera o vencimento em vez de herdar o anterior |
+| `wind_max_kmh` | valor numérico finito e não negativo; ausente ou inválido mantém o atual |
+| `soil_state` / `risk_level` | aceitam somente `dry`/`moist`/`saturated` e `green`/`yellow`/`red`; inválidos mantêm o atual |
+| `reason` | texto sem caracteres de controle, limitado a 128 bytes; ausente ou inválido mantém o atual |
 | JSON quebrado | loga `[config] JSON invalido` e ignora a mensagem |
-| Campos desconhecidos | ignorados. `wind_max_kmh` fica guardado para o E6; `soil_state`, `risk_level` e `reason`, para o E7 |
+| Payload grande | acima do limite seguro do buffer MQTT, é ignorado antes do parse. Campos desconhecidos seguem ignorados |
 
 O piso de 3° não é decorativo: com `tilt_limit_deg ≤ 1°` (a histerese), a saída do 🔴 cairia para
 zero ou menos e o nível **nunca** voltaria para 🟡/🟢. Dois `static_assert` no `main.ino` travam o
@@ -286,6 +337,8 @@ mosquitto_pub -h broker.hivemq.com -r \
 
 O firmware conecta no Wi-Fi e no MQTT, publica `status` (com LWT), assina o `config` e publica
 telemetria e eventos.
+O resultado mais recente da compilação PlatformIO e as ressalvas da validação geral estão em
+[document/evidencias/2026-09-25-validacao-geral.md](../document/evidencias/2026-09-25-validacao-geral.md).
 
 - **E1 — inclinômetro:** MPU6050 lido a 10 Hz, com média móvel de 5 amostras para `roll`, `pitch` e
   `accel_g`. `tiltDeg = max(|roll|, |pitch|)` é a grandeza comparada com o limite. Log a 1 Hz

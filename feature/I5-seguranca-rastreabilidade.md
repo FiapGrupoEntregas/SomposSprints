@@ -18,11 +18,11 @@ defensável perante a seguradora.
 ## Escopo
 
 **Inclui**
-- **Controle de acesso**: chave de API (cabeçalho `X-API-Key`) obrigatória nos endpoints de escrita e de publicação de limite. Leitura permanece aberta na demo (documentado como decisão).
+- **Controle de acesso**: chave de API (cabeçalho `X-API-Key`) obrigatória nos endpoints de escrita e de publicação de limite; leitura aberta apenas em dev/demo local e protegida em produção.
 - **Proteção de dados**: dados pessoais do PSR descartados na ingestão (D1); nada de segredo no repositório; `.env` fora do Git; validação estrita de toda entrada (Pydantic) e tamanho máximo de payload (64 KB → 413).
 - **Log estruturado** (JSON) com `request_id`, rota, status e duração. O `request_id` volta no cabeçalho da resposta.
 - **Trilha de auditoria** em banco: tabela `decision_log` com o que entrou, o que saiu e qual versão de regra/modelo decidiu.
-- **Integridade**: hash do payload dos eventos MQTT gravado junto, para detectar alteração.
+- **Integridade**: hash do payload recebido dos eventos MQTT gravado junto, para detectar alteração posterior no conteúdo armazenado. O hash não autentica o publicador nem prova a origem da mensagem.
 - Endpoint `GET /api/v1/audit?entity=&limit=` (protegido por chave) para consultar a trilha.
 
 **Não inclui**
@@ -38,14 +38,14 @@ registrar isso. O levantamento veio da revisão da D1.
 `NR_DOCUMENTO_SEGURADO` não chegam nem a virar `DataFrame`, e um teste falha se um nome ou
 documento aparecer em qualquer campo da tabela `policy`.
 
-**O resíduo:** o banco e a amostra versionada guardam o `proposal_id` (`ID_PROPOSTA`), que é
+**O resíduo nesta versão:** o banco e a amostra versionada guardam o `proposal_id` (`ID_PROPOSTA`), que é
 **chave de junção de volta ao CSV público do PSR — e esse CSV traz o nome do segurado**.
 
 - **Por que guardamos:** é a única chave que permite deduplicar a carga e refazer a ingestão de
   forma reproduzível. Sem ela, recarregar o CSV duplicaria 1,5 milhão de linhas.
-- **Por que o risco é baixo:** a fonte é dado aberto (Mapa, CC-BY) e **já está publicada com o
-  nome**. O `proposal_id` não dá acesso a nada que não seja público — mas **facilita a junção**,
-  e essa é a parte honesta que precisa estar escrita.
+- **Risco residual:** a fonte é dado aberto (Mapa, CC-BY) e **já está publicada com o nome**. O
+  `proposal_id` facilita a junção e por isso continua sendo um identificador linkável; não deve
+  ser tratado como anonimização nem como adequado a uso com dados pessoais sem análise LGPD.
 - **Como eliminar, se um dia valer a pena:** trocar o `proposal_id` por um hash com sal guardado
   fora do repositório. Está no roadmap, **não** está feito.
 

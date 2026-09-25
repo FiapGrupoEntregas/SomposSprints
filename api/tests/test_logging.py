@@ -10,6 +10,7 @@ from collections.abc import Iterator
 
 import pytest
 from fastapi.testclient import TestClient
+from starlette.requests import Request
 
 from app.core.config import Settings, get_settings
 from app.core.logging import (
@@ -17,6 +18,7 @@ from app.core.logging import (
     REQUEST_ID_HEADER,
     REQUEST_ID_PATTERN,
     JsonFormatter,
+    _request_id_from,
     request_id_var,
 )
 from app.main import app
@@ -224,7 +226,6 @@ def test_a_normal_body_passes_the_size_check(client: TestClient) -> None:
         ("x" * 64, True),
         # Longo demais para um cabeçalho e para uma coluna indexada.
         ("x" * 65, False),
-        ("x" * 100_000, False),
         # Tentativa de injetar cabeçalho.
         ("abc\r\nX-Injetado: sim", False),
         # Acento quebraria a montagem do cabeçalho (`UnicodeEncodeError`). Vai como bytes
@@ -251,6 +252,22 @@ def test_a_client_request_id_is_only_reused_when_it_is_usable(
     else:
         assert returned != sent
         assert REQUEST_ID_PATTERN.match(returned)
+
+
+def test_a_request_id_of_100k_characters_is_discarded_before_transport() -> None:
+    """O caso extremo testa o filtro sem passar pelo limite de cabeçalho do Windows."""
+    hostile_id = "x" * 100_000
+    request = Request(
+        {
+            "type": "http",
+            "headers": [(REQUEST_ID_HEADER.lower().encode(), hostile_id.encode())],
+        }
+    )
+
+    request_id = _request_id_from(request)
+
+    assert request_id != hostile_id
+    assert REQUEST_ID_PATTERN.fullmatch(request_id)
 
 
 def test_a_hostile_request_id_does_not_flood_the_log(

@@ -12,8 +12,10 @@ repetido e entrega a mensagem ao callback. **Payload inválido vira log e descar
 exceção que derrube a thread — se a ponte morresse, o painel ao vivo morria junto.
 """
 
+import ipaddress
 import json
 import logging
+import ssl
 import threading
 from collections import OrderedDict
 from collections.abc import Callable
@@ -47,6 +49,12 @@ RECENT_EVENT_IDS = 500
 
 # Mensagem única quando não dá para falar com o equipamento (W4).
 MQTT_UNAVAILABLE_MESSAGE = "Equipamento sem conexão MQTT"
+
+# Redes privadas aceitas para endereços IP configurados como broker de produção.
+PRIVATE_BROKER_NETWORKS = tuple(
+    ipaddress.ip_network(network)
+    for network in ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "fc00::/7")
+)
 
 # contrato-mqtt — tópicos publicados com **retained**. Apagar um retained em MQTT é publicar um
 # payload de **zero byte**, então, só nestes, payload vazio é operação normal e não erro.
@@ -105,7 +113,12 @@ class MqttBridge:
         self._on_status = on_status
         self._recent_events = RecentEventIds()
         self._connected = threading.Event()
+        tls_context = _build_mqtt_tls_context(settings)
         self._client = client if client is not None else self._build_client()
+        if tls_context is not None:
+            self._client.tls_set_context(tls_context)
+        if settings.mqtt_username and settings.mqtt_password:
+            self._client.username_pw_set(settings.mqtt_username.strip(), settings.mqtt_password)
 
     @property
     def prefix(self) -> str:
@@ -392,3 +405,67 @@ def get_mqtt(request: Request) -> MqttBridge:
 def _as_bytes(payload: bytes | str) -> bytes:
     """Os bytes exatos da mensagem. É sobre eles que o hash de integridade é calculado (I5)."""
     return payload if isinstance(payload, bytes) else payload.encode("utf-8")
+
+
+def _build_mqtt_tls_context(settings: Settings) -> ssl.SSLContext | None:
+    """Valida a política do broker e prepara TLS sem propagar detalhes de certificados."""
+    if not settings.mqtt_enabled:
+        return None
+
+    production = settings.environment != "dev"
+    host = settings.mqtt_host.strip().lower().rstrip(".")
+    has_username = bool(settings.mqtt_username.strip())
+    has_password = bool(settings.mqtt_password.strip())
+    has_client_cert = bool(settings.mqtt_client_cert.strip())
+    has_client_key = bool(settings.mqtt_client_key.strip())
+    has_ca = bool(settings.mqtt_ca_cert.strip())
+
+    if has_username != has_password:
+        raise ValueError("Configuração MQTT incompleta: informe usuário e senha juntos.")
+    if has_client_cert != has_client_key:
+        raise ValueError("Configuração MQTT inválida: certificado e chave do cliente são pareados.")
+
+    if production:
+        if not _is_private_broker_host(host):
+            raise ValueError("Configuração MQTT de produção exige um host de broker privado.")
+        if not has_ca:
+            raise ValueError("Configuração MQTT de produção exige TLS com CA configurada.")
+        if not has_username:
+            raise ValueError("Configuração MQTT de produção exige credenciais do broker.")
+
+    if not any((has_ca, has_client_cert, has_client_key)):
+        if has_username:
+            raise ValueError("Credenciais MQTT não podem ser usadas sem TLS.")
+        return None
+
+    try:
+        context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
+        context.minimum_version = ssl.TLSVersion.TLSv1_2
+        context.check_hostname = True
+        context.verify_mode = ssl.CERT_REQUIRED
+        if has_ca:
+            context.load_verify_locations(cafile=settings.mqtt_ca_cert.strip())
+        if has_client_cert:
+            context.load_cert_chain(
+                certfile=settings.mqtt_client_cert.strip(),
+                keyfile=settings.mqtt_client_key.strip(),
+            )
+    except (OSError, ssl.SSLError, ValueError):
+        raise ValueError(
+            "Configuração TLS MQTT inválida; confira CA e certificado do cliente."
+        ) from None
+
+    return context
+
+
+def _is_private_broker_host(host: str) -> bool:
+    """Aceita apenas IP RFC1918/ULA ou DNS de escopo interno."""
+    try:
+        address = ipaddress.ip_address(host.strip("[]"))
+    except ValueError:
+        return host.endswith((".internal", ".local"))
+
+    return any(
+        address.version == network.version and address in network
+        for network in PRIVATE_BROKER_NETWORKS
+    )

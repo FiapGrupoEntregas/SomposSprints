@@ -350,7 +350,10 @@ def test_a_crop_without_claims_has_no_top_event(session: Session) -> None:
 
 
 def test_the_crop_report_says_what_it_is_for(session: Session) -> None:
-    assert "subscrição" in crop_summary(session).purpose
+    purpose = crop_summary(session).purpose
+    assert "subscrição" in purpose
+    assert "PSR/SISSER" in purpose
+    assert "não representa o tipo de operação" in purpose
 
 
 # --- LGPD ---------------------------------------------------------------------------------------

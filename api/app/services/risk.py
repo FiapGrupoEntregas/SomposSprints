@@ -36,6 +36,7 @@ from app.schemas.farm import Farm
 from app.schemas.risk import (
     CellRisk,
     DayRisk,
+    ExperimentalMLPInfo,
     Hazard,
     HazardResult,
     LevelPercentages,
@@ -98,6 +99,15 @@ MAX_FORECAST_DAYS = 7
 
 # regras-de-risco §2 — a previsão precisa de 3 dias passados para fechar a chuva de 72 h do 1º dia
 PAST_DAYS = 3
+EXPERIMENTAL_MLP_NOTE = (
+    "Experimento MLP opt-in e não selecionado como modelo oficial. Este score não é uma "
+    "probabilidade calibrada e não altera nível, limite, recomendações, motivos ou alertas "
+    "operacionais. A exibição na interface não faz parte desta etapa."
+)
+EXPERIMENTAL_MLP_MISSING_NOTE = (
+    "Artefato MLP experimental ausente; nenhum score foi calculado. A previsão oficial por "
+    "regras e o modelo publicado permanecem disponíveis."
+)
 
 # Casas decimais dos percentuais publicados na resposta (mesma convenção do relevo, W2).
 PERCENT_DECIMALS = 1
@@ -466,6 +476,7 @@ def build_forecast_context(
     days: int = MAX_FORECAST_DAYS,
     scenario: Scenario | None = None,
     today: date | None = None,
+    include_experimental_mlp: bool = False,
 ) -> ForecastContext:
     """Junta relevo (W2) e previsão (I1), aplica o cenário (§10) e roda o motor de risco.
 
@@ -490,6 +501,8 @@ def build_forecast_context(
 
     forecast = assess_farm(terrain, daily, farm_reference_tilt_limit_deg(farm), scenario=scenario)
     _attach_model(forecast, farm, terrain, daily)
+    if include_experimental_mlp:
+        _attach_experimental_mlp(forecast, farm, terrain, daily)
     return ForecastContext(terrain=terrain, hourly=hourly, daily=daily, forecast=forecast)
 
 
@@ -527,9 +540,50 @@ def get_risk_forecast(
     days: int = MAX_FORECAST_DAYS,
     scenario: Scenario | None = None,
     today: date | None = None,
+    include_experimental_mlp: bool = False,
 ) -> RiskForecast:
-    """Previsão de risco da fazenda (W3). Atalho para `build_forecast_context(...).forecast`."""
-    return build_forecast_context(farm, client, days, scenario, today).forecast
+    """Previsão de risco da fazenda (W3), com experimento MLP opcional e isolado."""
+    return build_forecast_context(
+        farm,
+        client,
+        days,
+        scenario,
+        today,
+        include_experimental_mlp=include_experimental_mlp,
+    ).forecast
+
+
+def _attach_experimental_mlp(
+    forecast: RiskForecast, farm: Farm, terrain: TerrainResponse, daily: list[DailyWeather]
+) -> None:
+    """Pontua os dias com a MLP experimental, sem alterar qualquer saída operacional."""
+    from app.services import model as model_service
+    from app.services import model_scoring
+
+    pipeline = model_service.get_optional_neural_model()
+    if pipeline is None:
+        forecast.experimental_mlp = ExperimentalMLPInfo(
+            available=False,
+            note=EXPERIMENTAL_MLP_MISSING_NOTE,
+        )
+        return
+
+    forecast.experimental_mlp = ExperimentalMLPInfo(
+        available=True,
+        version=model_service.NEURAL_MODEL_VERSION,
+        note=EXPERIMENTAL_MLP_NOTE,
+    )
+    weather_by_date = {weather.date: weather for weather in daily}
+    for day in forecast.days:
+        weather = weather_by_date.get(day.date)
+        if weather is None:  # pragma: no cover — ambos usam a mesma série diária
+            continue
+        score = model_service.score_optional_neural_model(
+            pipeline, model_scoring.build_features(farm, terrain, weather)
+        )
+        if score is None:
+            raise RuntimeError("A MLP experimental carregada não produziu score.")
+        day.experimental_mlp_score = round(score, model_scoring.PROBABILITY_DECIMALS)
 
 
 def _pct_levels(cells: Sequence[CellRisk]) -> LevelPercentages:

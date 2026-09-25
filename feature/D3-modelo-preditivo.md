@@ -3,11 +3,11 @@
 | Campo | Valor |
 |---|---|
 | Prioridade | P0 |
-| Camadas | api (dados) |
+| Camadas | api (dados), front-web |
 | Depende de | D2 |
 | Janela | 21/09 |
 | Responsável | dev-dados |
-| Status | ✅ Concluída (21/09/2026) — retreinada com 2.256 linhas: o modelo **supera** o baseline no teste, com ressalvas; as regras seguem comandando o alerta |
+| Status | ✅ Concluída historicamente (21/09/2026) — retreinada com 2.256 linhas: o modelo **supera** o baseline no teste, com ressalvas; experimento MLP opt-in integrado à API e à previsão de risco do front |
 
 ## Objetivo
 
@@ -20,16 +20,20 @@ explicam o alerta ao operador, o modelo dá a probabilidade para a seguradora.
 **Inclui**
 - Baseline: o score por regras de [regras-de-risco.md](../document/regras-de-risco.md) aplicado ao dataset.
 - Modelos candidatos: **regressão logística** (com padronização) e **floresta aleatória**. Vence o de melhor AUC-PR, com desempate pela simplicidade.
+- Experimento complementar **opt-in**: MLP pequena (`MLPClassifier`), com artefato separado. Não participa da escolha do modelo publicado e não altera score, limite ou alerta operacional.
 - Divisão **temporal**: **treino ≤ 2021 · validação 2022–2023 · teste 2024**. Sem embaralhar.
   > ⚠️ **2025 não pode ser teste** (corrigido na D2): as apólices de 2025 estão em vigência e `indemnity_value` é nulo — isso é **censura**, não rótulo 0. Testar em 2025 mediria 0% de sinistro e produziria métrica sem sentido. A população utilizável é **2016–2024**, e o arquivo de 2006–2015 sai inteiro porque tem vigência de duração zero.
 - Métricas: AUC-ROC, **AUC-PR**, recall e precisão no limiar escolhido, matriz de confusão e curva de calibração.
 - Importância das variáveis (coeficientes ou importância por permutação).
-- Artefato versionado: `api/app/data/model/risk_model_v1.joblib` + `risk_model_v1.json` (data, dataset, features, métricas, limiar).
+- Artefato versionado do modelo selecionado: `api/app/data/model/risk_model_v1.joblib` + `risk_model_v1.json` (data, dataset, features, métricas, limiar).
+- Artefato experimental separado: `risk_neural_model_v1.joblib` + `risk_neural_model_v1.json`; sua geração exige opção explícita no script.
 - Carregamento na API e uso no score (a integração na tela é a W13).
+- Etapa API do experimento MLP: `GET /api/v1/farms/{farm_id}/risk?include_experimental_mlp=true` expõe score e versão MLP separados dos campos oficiais; a opção fica desligada por padrão.
+- O controle e a exibição do score MLP na previsão de risco são por sessão e opt-in; o score não calibrado fica separado dos campos oficiais e dos alertas.
 - Seção de resultados em `document/dados-e-modelo.md`, com as limitações.
 
 **Não inclui**
-- Treino em produção, ajuste automático de hiperparâmetros pesado, deep learning.
+- Treino em produção, ajuste automático de hiperparâmetros pesado ou uso da MLP em alertas operacionais.
 
 ## Regras e lógica
 
@@ -42,6 +46,7 @@ explicam o alerta ao operador, o modelo dá a probabilidade para a seguradora.
 ### API (`api/`)
 - `app/services/model.py`: `train(df) -> TrainResult`, `evaluate(model, df) -> Metrics`, `load_model()`, `predict_proba(features) -> float`.
 - `scripts/train_model.py`: treina, avalia, salva o artefato e imprime a tabela de métricas.
+- `scripts/train_model.py --incluir-rede-opcional`: executa e salva também o experimento MLP sem substituir o artefato escolhido. `--somente-rede-opcional` roda o experimento isolado.
 - Dependência: `uv add scikit-learn joblib`.
 
 ## Critérios de aceite
@@ -52,6 +57,9 @@ explicam o alerta ao operador, o modelo dá a probabilidade para a seguradora.
 - [x] A API carrega o modelo em menos de 1 s e responde `predict_proba` em menos de 50 ms.
 - [x] Sem o arquivo do modelo, a API sobe do mesmo jeito e usa só as regras (com aviso no log).
 - [x] Limitações escritas: rótulo é seguro agrícola (não máquina), viés de quem contrata seguro, amostra.
+- [x] A API expõe o score experimental MLP somente com `include_experimental_mlp=true`; a ausência do artefato é declarada e falhas de carregamento/inferência não viram resposta de sucesso.
+- [x] Score, versão e ressalva MLP são separados dos campos oficiais; o score usa as features de `model_scoring.build_features` e não altera nível, limite, motivos, recomendações ou alertas operacionais.
+- [x] O front oferece controle da MLP por sessão, desligado por padrão, e mostra score/indisponibilidade e ressalva sem alterar a visualização operacional.
 
 ## Tarefas
 
@@ -125,3 +133,27 @@ sinistros**, não sobre o modelo.
 W13 os liga à rota e à tela. O texto da ressalva exibido na API e no front é montado a partir do
 JSON do artefato (`app/services/model_scoring.py::_note`), então ele acompanhou a virada do
 resultado sem edição manual.
+
+### Etapa API do experimento MLP (25/09/2026)
+
+A rota de risco aceita `include_experimental_mlp=true`; o padrão é `false`. No opt-in, cada dia
+traz `experimental_mlp_score` e a resposta traz `experimental_mlp.available`, `version` e `note`,
+sem reutilizar `model_probability` nem a versão do modelo oficial. A MLP usa a mesma construção de
+features de `model_scoring.build_features`. A nota identifica o experimento e declara que o score
+**não é uma probabilidade calibrada**; ele não dirige nível, limite, recomendações, motivos nem
+alertas operacionais. Se o arquivo opcional não existir, os metadados dizem que está indisponível;
+artefato corrompido ou falha de inferência produz erro, sem resposta vazia de sucesso.
+
+A opção e o resultado experimental também entram em bloco próprio na trilha de auditoria.
+
+### Etapa front-web do experimento MLP (25/09/2026)
+
+A aba Previsão de risco tem o controle "Mostrar score experimental da MLP", guardado em chave
+própria da sessão e desligado por padrão. Ligado, envia `include_experimental_mlp=true` à rota;
+desligado, não inclui a opção na chamada. O resultado aparece separado do cartão do modelo oficial,
+com versão e ressalva de que não é calibrado. Se o artefato estiver ausente, a indisponibilidade
+informada pela API é mostrada sem esconder o risco calculado pelas regras. A cache da previsão
+separa chamadas com a opção ligada e desligada.
+
+Esta implementação não altera o status histórico da feature, nem declara o projeto, o entregável
+ou uma revisão humana como concluídos por causa desta etapa.

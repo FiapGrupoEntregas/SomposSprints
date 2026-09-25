@@ -8,8 +8,18 @@ from pathlib import Path
 # Precisa vir antes de qualquer import de `app`, porque `get_settings()` é cacheado no primeiro uso:
 # a ponte MQTT (I2) fica desligada e o banco (I3) é em memória, para nenhum teste tocar a rede nem
 # deixar um `agrishield.db` para trás.
-os.environ.setdefault("AGRISHIELD_MQTT_ENABLED", "false")
-os.environ.setdefault("AGRISHIELD_DATABASE_URL", "sqlite://")
+os.environ["AGRISHIELD_ENVIRONMENT"] = "dev"
+os.environ["AGRISHIELD_MQTT_ENABLED"] = "false"
+os.environ["AGRISHIELD_DATABASE_URL"] = "sqlite://"
+os.environ["AGRISHIELD_API_KEYS"] = ""
+for _mqtt_credential_setting in (
+    "AGRISHIELD_MQTT_CA_CERT",
+    "AGRISHIELD_MQTT_CLIENT_CERT",
+    "AGRISHIELD_MQTT_CLIENT_KEY",
+    "AGRISHIELD_MQTT_USERNAME",
+    "AGRISHIELD_MQTT_PASSWORD",
+):
+    os.environ[_mqtt_credential_setting] = ""
 
 import httpx  # noqa: E402
 import pytest  # noqa: E402

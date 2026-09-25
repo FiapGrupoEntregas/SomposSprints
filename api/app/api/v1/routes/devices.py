@@ -18,7 +18,7 @@ from sqlmodel import Session
 from app.clients.open_meteo import OpenMeteoClient, get_open_meteo_client
 from app.core.clock import now_local, today_local
 from app.core.logging import request_id_var
-from app.core.security import require_api_key
+from app.core.security import require_api_key, require_read_access
 from app.db import get_session
 from app.models import DeviceEvent
 from app.mqtt.bridge import MQTT_UNAVAILABLE_MESSAGE, MqttBridge, get_mqtt
@@ -96,7 +96,11 @@ MqttDep = Annotated[MqttBridge, Depends(get_mqtt)]
 # --- W4: limite do dia -------------------------------------------------------------------------
 
 
-@router.get("/{device_id}/limit", response_model=DeviceLimit)
+@router.get(
+    "/{device_id}/limit",
+    response_model=DeviceLimit,
+    dependencies=[Depends(require_read_access)],
+)
 def get_device_limit(
     device_id: DeviceIdPath,
     client: OpenMeteoDep,
@@ -160,7 +164,11 @@ def publish_device_limit(
 # --- W5: painel ao vivo ------------------------------------------------------------------------
 
 
-@router.get("/{device_id}/status", response_model=DeviceStatusResponse)
+@router.get(
+    "/{device_id}/status",
+    response_model=DeviceStatusResponse,
+    dependencies=[Depends(require_read_access)],
+)
 def get_device_status(device_id: DeviceIdPath, session: SessionDep) -> DeviceStatusResponse:
     """Está online? (W5) `offline` pelo LWT **ou** por passar de 20 s sem telemetria."""
     _require_device(device_id)
@@ -180,7 +188,11 @@ def get_device_status(device_id: DeviceIdPath, session: SessionDep) -> DeviceSta
     )
 
 
-@router.get("/{device_id}/telemetry/latest", response_model=TelemetryPoint)
+@router.get(
+    "/{device_id}/telemetry/latest",
+    response_model=TelemetryPoint,
+    dependencies=[Depends(require_read_access)],
+)
 def get_latest_telemetry(device_id: DeviceIdPath, session: SessionDep) -> TelemetryPoint:
     """Última leitura do equipamento (W5). **404** enquanto ele não publicar nada."""
     _require_device(device_id)
@@ -191,7 +203,11 @@ def get_latest_telemetry(device_id: DeviceIdPath, session: SessionDep) -> Teleme
     return TelemetryPoint.model_validate(latest, from_attributes=True)
 
 
-@router.get("/{device_id}/telemetry", response_model=TelemetrySeries)
+@router.get(
+    "/{device_id}/telemetry",
+    response_model=TelemetrySeries,
+    dependencies=[Depends(require_read_access)],
+)
 def get_telemetry_series(
     device_id: DeviceIdPath,
     session: SessionDep,
@@ -212,7 +228,11 @@ def get_telemetry_series(
     )
 
 
-@router.get("/{device_id}/history", response_model=DeviceHistory)
+@router.get(
+    "/{device_id}/history",
+    response_model=DeviceHistory,
+    dependencies=[Depends(require_read_access)],
+)
 def get_device_history(
     device_id: DeviceIdPath,
     session: SessionDep,
@@ -229,7 +249,11 @@ def get_device_history(
     return history
 
 
-@router.get("/{device_id}/events", response_model=list[DeviceEventResponse])
+@router.get(
+    "/{device_id}/events",
+    response_model=list[DeviceEventResponse],
+    dependencies=[Depends(require_read_access)],
+)
 def get_device_events(
     device_id: DeviceIdPath,
     session: SessionDep,

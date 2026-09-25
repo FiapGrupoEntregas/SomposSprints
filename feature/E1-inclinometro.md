@@ -7,7 +7,7 @@
 | Depende de | — |
 | Janela | 19/09 |
 | Responsável | Dev |
-| Status | 🟦 Em revisão (10 Hz + média móvel implementados; falta conferir os ângulos no Wokwi) |
+| Status | ✅ Pronto (ângulos conferidos no Wokwi em 25/09/2026; evidência registrada) |
 
 ## Objetivo
 
@@ -46,7 +46,8 @@ accel_g = sqrt(ax² + ay² + az²)
 ## Critérios de aceite
 
 Com os valores da tabela do [iot/README.md](../iot/README.md#simulando-inclinação):
-- [ ] 0°, 10°, 15° e 60° lidos com erro ≤ 0,5° (conferir no Wokwi, T6).
+- [x] 0°, 10°, 15° e 60° lidos com erro ≤ 0,5° (conferidos no Wokwi; ver
+  [evidência de 25/09/2026](../document/evidencias/2026-09-25-inclinometro-wokwi.md)).
 - [x] Mudar o slider reflete no Serial em ≤ 1 s (amostra a 100 ms, média de 5 → 500 ms; log a 1 Hz).
 - [x] Nenhum `delay()` dentro do `loop()`.
 
@@ -54,5 +55,5 @@ Com os valores da tabela do [iot/README.md](../iot/README.md#simulando-inclinaç
 
 - [x] Temporização a 10 Hz + média móvel
 - [x] `tiltDeg` (`tiltFromImu`)
-- [ ] Conferir a tabela de ângulos no Wokwi (pode ser feito pelo time, na T6)
+- [x] Conferir a tabela de ângulos no Wokwi
 - [x] Atualizar o `iot/README.md` e o status

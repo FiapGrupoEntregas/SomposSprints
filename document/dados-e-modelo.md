@@ -778,6 +778,42 @@ Até lá, a entrega é honesta sobre o que é: **um motor de regras calibrado e 
 modelo preditivo instrumentado ao lado — medido, com ganho real mas pequeno, e com as ressalvas
 escritas do lado do número.**
 
+## Experimento complementar: rede neural opcional (25/09/2026)
+
+Foi treinada uma MLP pequena (`MLPClassifier`, uma camada oculta com 8 unidades, `alpha=10`) como
+experimento independente. O treino é explícito:
+
+```bash
+uv run --project api python scripts/train_model.py --somente-rede-opcional
+```
+
+O artefato e os metadados são separados do modelo selecionado pela D3:
+`api/app/data/model/risk_neural_model_v1.joblib` e
+`api/app/data/model/risk_neural_model_v1.json`. O JSON registra arquitetura, semente, versão do
+scikit-learn, corte temporal, métricas e informa que 2024 não foi usado para seleção ou ajuste.
+O treino padrão continua sem executar essa rede; `--incluir-rede-opcional` pede os dois experimentos
+na mesma execução. O carregador e a função de score são acessórios e não substituem os serviços da
+regressão logística.
+
+| Corte | Modelo | AUC-ROC | AUC-PR | Recall | Precisão | Limiar |
+|---|---|---:|---:|---:|---:|---:|
+| Validação (2022–2023, 62 positivos / 504) | Regras | 0,499 | 0,126 | 0,968 | 0,135 | 0,063 |
+| Validação (2022–2023, 62 positivos / 504) | MLP opcional | 0,558 | 0,139 | 0,839 | 0,152 | 0,438 |
+| Teste (2024, 26 positivos / 305) | Regras | 0,404 | 0,074 | 0,846 | 0,081 | 0,063 |
+| Teste (2024, 26 positivos / 305) | MLP opcional | 0,637 | 0,150 | 0,885 | 0,108 | 0,438 |
+
+O limiar da MLP foi escolhido na validação e reaplicado sem ajuste no teste. O teste continua
+abaixo do mínimo de 30 positivos definido para uma conclusão firme, e não calculamos intervalo de
+confiança para a diferença desta MLP contra as regras. Portanto, os números são **exploratórios**:
+não demonstram superioridade estatística, não alteram o modelo principal e não autorizam uso para
+decidir operação, limite de inclinação, subscrição ou indenização. Além disso, o alvo continua
+sendo indenização agrícola — não acidente de máquina — e as variáveis de clima do treino cobrem
+uma safra, não um único dia.
+
+Nesta etapa o serviço disponibiliza o carregamento e o score do artefato isolado; a API de risco e
+a interface ainda não selecionam a MLP. Uma futura opção de interface deve iniciar desligada,
+permitir desligá-la por sessão e manter os alertas exclusivamente nas regras.
+
 ## Limitações a declarar no pitch
 
 1. O rótulo vem do **seguro agrícola**, não de sinistros de máquinas. É uma aproximação da exposição climática.

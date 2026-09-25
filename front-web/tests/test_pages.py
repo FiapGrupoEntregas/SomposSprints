@@ -449,7 +449,12 @@ FAKE_RISKS = {
 }
 
 
-def fake_get_risk(farm_id: str, days: int = 7, scenario: str | None = None) -> dict:
+def fake_get_risk(
+    farm_id: str,
+    days: int = 7,
+    scenario: str | None = None,
+    include_experimental_mlp: bool = False,
+) -> dict:
     return FAKE_RISKS[(farm_id, scenario)]
 
 
@@ -1105,6 +1110,7 @@ def api_online(
     replays: dict | None = None,
     replay_summary: dict | None = None,
     history: dict | None = None,
+    risk_calls: list[dict] | None = None,
 ):
     """A API responde.
 
@@ -1133,8 +1139,30 @@ def api_online(
             return replays[case_id]
         return {**REPLAY_HIT, "case": None, "location_precision": "aproximado"}
 
-    def risk_for(farm_id: str, days: int = 7, scenario: str | None = None) -> dict:
-        return risks[(farm_id, scenario)]
+    def risk_for(
+        farm_id: str,
+        days: int = 7,
+        scenario: str | None = None,
+        include_experimental_mlp: bool = False,
+    ) -> dict:
+        if risk_calls is not None:
+            risk_calls.append(
+                {
+                    "farm_id": farm_id,
+                    "days": days,
+                    "scenario": scenario,
+                    "include_experimental_mlp": include_experimental_mlp,
+                }
+            )
+        forecast = risks[(farm_id, scenario)]
+        if include_experimental_mlp:
+            return forecast
+        return {key: value for key, value in forecast.items() if key != "experimental_mlp"} | {
+            "days": [
+                {key: value for key, value in day.items() if key != "experimental_mlp_score"}
+                for day in forecast.get("days", [])
+            ]
+        }
 
     def fake_latest(device_id: str) -> dict:
         if telemetry is None:
@@ -1677,9 +1705,19 @@ def test_live_fragment_has_no_widgets_and_no_weather_calls() -> None:
 
     weather_calls: list[str] = []
 
-    def recording_risk(farm_id: str, days: int = 7, scenario: str | None = None):
+    def recording_risk(
+        farm_id: str,
+        days: int = 7,
+        scenario: str | None = None,
+        include_experimental_mlp: bool = False,
+    ):
         weather_calls.append("risk")
-        return fake_get_risk(farm_id, days=days, scenario=scenario)
+        return fake_get_risk(
+            farm_id,
+            days=days,
+            scenario=scenario,
+            include_experimental_mlp=include_experimental_mlp,
+        )
 
     def recording_limit(device_id: str, date: str | None = None, scenario: str | None = None):
         weather_calls.append("limit")
@@ -2155,6 +2193,66 @@ def test_model_block_without_probability_shows_no_card() -> None:
     assert MODEL_NOTE not in markdowns
     # E a tela do risco por regras continua inteira.
     assert "🔴 Risco alto" in markdowns
+
+
+def test_experimental_mlp_control_is_off_by_default_and_sends_opt_in() -> None:
+    calls: list[dict] = []
+    mlp_forecast = {
+        **RISK_HILLY,
+        "experimental_mlp": {
+            "available": True,
+            "version": "v-experimental-test",
+            "note": "Não calibrada e sem efeito nos alertas oficiais.",
+        },
+        "days": [{**day, "experimental_mlp_score": 0.7313} for day in RISK_HILLY["days"]],
+    }
+    risks = {**FAKE_RISKS, ("cafe-carmo-de-minas", None): mlp_forecast}
+    at = AppTest.from_file("../views/risk_map.py", default_timeout=30)
+    at.session_state["farm_id"] = "cafe-carmo-de-minas"
+
+    with api_online(risks=risks, risk_calls=calls):
+        at.run()
+
+    assert not at.exception
+    assert at.toggle[1].value is False
+    assert calls[-1]["include_experimental_mlp"] is False
+    assert "Score experimental da MLP" not in " ".join(element.value for element in at.markdown)
+
+    with api_online(risks=risks, risk_calls=calls):
+        at.toggle[1].set_value(True).run()
+
+    assert not at.exception
+    assert at.toggle[1].value is True
+    assert calls[-1]["include_experimental_mlp"] is True
+    assert any(metric.label == "Score experimental MLP (escala 0–1)" for metric in at.metric)
+    assert any(metric.value == "0,7313" for metric in at.metric)
+    captions = " ".join(element.value for element in at.caption)
+    assert "Não calibrada e sem efeito nos alertas oficiais." in captions
+    assert "🔴 Risco alto" in " ".join(element.value for element in at.markdown)
+
+
+def test_experimental_mlp_unavailability_is_explained_when_enabled() -> None:
+    unavailable = {
+        **RISK_HILLY,
+        "experimental_mlp": {
+            "available": False,
+            "version": None,
+            "note": "Artefato MLP experimental ausente; score indisponível.",
+        },
+    }
+    risks = {**FAKE_RISKS, ("cafe-carmo-de-minas", None): unavailable}
+    at = AppTest.from_file("../views/risk_map.py", default_timeout=30)
+    at.session_state["farm_id"] = "cafe-carmo-de-minas"
+    at.session_state["risk_experimental_mlp_enabled"] = True
+
+    with api_online(risks=risks):
+        at.run()
+
+    assert not at.exception
+    assert "Artefato MLP experimental ausente; score indisponível." in [
+        element.value for element in at.info
+    ]
+    assert "🔴 Risco alto" in " ".join(element.value for element in at.markdown)
 
 
 # ----------------------------------------------------------------- replay (W9)

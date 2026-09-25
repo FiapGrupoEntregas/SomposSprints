@@ -117,6 +117,19 @@ class ModelInfo(BaseModel):
     )
 
 
+class ExperimentalMLPInfo(BaseModel):
+    """Disponibilidade e ressalva do experimento MLP, separado do modelo oficial."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    available: bool = Field(description="Se o artefato experimental foi carregado.")
+    version: str | None = Field(default=None, description="Versão do artefato MLP carregado.")
+    note: str = Field(
+        min_length=1,
+        description="Ressalva: score experimental, não é probabilidade calibrada.",
+    )
+
+
 class HazardResult(BaseModel):
     """Um perigo que pesou no nível da célula, com o motivo já escrito para a tela."""
 
@@ -200,6 +213,12 @@ class DayRisk(BaseModel):
     model_drivers: list[str] | None = Field(
         default=None, description="As variáveis que mais pesam no modelo."
     )
+    experimental_mlp_score: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="Score do experimento MLP; não é probabilidade calibrada.",
+    )
 
 
 class RiskForecast(BaseModel):
@@ -220,4 +239,8 @@ class RiskForecast(BaseModel):
             "Contexto do modelo preditivo (W13): versão, métricas do teste e a ressalva de "
             "leitura. Nulo quando não há artefato carregado."
         ),
+    )
+    experimental_mlp: ExperimentalMLPInfo | None = Field(
+        default=None,
+        description="Metadados do experimento MLP, presente somente quando solicitado.",
     )

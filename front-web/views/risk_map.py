@@ -15,7 +15,7 @@ from components.farm_picker import farm_picker
 from components.formatting import SOIL_LABELS, level_style
 from components.formatting import num as _num
 from components.formatting import short_date as _short_date
-from components.state import SCENARIO_KEY, SELECTED_DATE_KEY
+from components.state import EXPERIMENTAL_MLP_KEY, SCENARIO_KEY, SELECTED_DATE_KEY
 from services.api_client import (
     ApiError,
     get_farm,
@@ -639,6 +639,25 @@ def _model_card(day: dict, model: dict | None) -> None:
             )
 
 
+def _experimental_mlp_card(day: dict, info: dict | None) -> None:
+    """Exibe a leitura experimental apenas após opt-in, sem sugerir calibração."""
+    if info is None:
+        return
+    if not info.get("available"):
+        st.info(info["note"])
+        return
+
+    score = day.get("experimental_mlp_score")
+    st.markdown("**🧪 Score experimental da MLP**")
+    if score is None:
+        st.info("A MLP não produziu score para este dia.")
+    else:
+        version = info.get("version") or "sem versão"
+        st.metric("Score experimental MLP (escala 0–1)", _num(score, 4))
+        st.caption(f"Experimento {version}; não é uma probabilidade calibrada.")
+    st.caption(info["note"])
+
+
 def _render_risk_tab(farm: dict) -> None:
     # Sem `key=`: estado de widget some na troca de página. A escolha vive na chave própria.
     scenario_on = st.toggle(
@@ -652,8 +671,23 @@ def _render_risk_tab(farm: dict) -> None:
     st.session_state[SCENARIO_KEY] = scenario_on
     scenario = HEAVY_RAIN_SCENARIO if scenario_on else None
 
+    experimental_mlp_on = st.toggle(
+        "Mostrar score experimental da MLP",
+        value=bool(st.session_state.get(EXPERIMENTAL_MLP_KEY, False)),
+        help=(
+            "Solicita uma leitura experimental separada. Ela não é calibrada e não altera "
+            "níveis de risco, limites, recomendações ou alertas."
+        ),
+    )
+    st.session_state[EXPERIMENTAL_MLP_KEY] = experimental_mlp_on
+
     try:
-        forecast = get_risk(farm["id"], days=FORECAST_DAYS, scenario=scenario)
+        forecast = get_risk(
+            farm["id"],
+            days=FORECAST_DAYS,
+            scenario=scenario,
+            include_experimental_mlp=experimental_mlp_on,
+        )
         terrain = get_terrain(farm["id"])
     except ApiError as error:
         st.error(str(error))
@@ -692,6 +726,7 @@ def _render_risk_tab(farm: dict) -> None:
         _weather_strip(day)
         _day_panel(day, hazards)
         _model_card(day, forecast.get("model"))
+        _experimental_mlp_card(day, forecast.get("experimental_mlp"))
 
     # Fora das colunas: em tela estreita elas empilham, e o gráfico fica no fim da página.
     _recommendations_card(farm["id"], scenario)

@@ -25,6 +25,7 @@ from app.mqtt.bridge import get_mqtt
 from app.repositories import audit as audit_repository
 from app.schemas.audit import DecisionSource, DecisionType
 from app.schemas.mqtt import EventMessage
+from app.services import model as model_service
 from app.services.terrain import clear_terrain_cache
 from tests.conftest import FIXTURES_DIR, load_fixture
 from tests.test_devices_limit_route import FakeBridge
@@ -182,6 +183,30 @@ def test_asking_for_the_risk_records_a_decision(
     # O resumo entra, as 700 células não: a trilha não pode crescer mais que o banco.
     assert "cells" not in output
     assert rows[0].request_id == response.headers["X-Request-ID"]
+
+
+def test_risk_opt_in_and_experimental_scores_are_audited_separately(
+    api: Callable[..., TestClient],
+    session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(model_service, "get_optional_neural_model", lambda: object())
+    monkeypatch.setattr(model_service, "score_optional_neural_model", lambda *_: 0.625)
+    client = api()
+
+    response = client.get(RISK_URL, params={"days": 1, "include_experimental_mlp": True})
+
+    assert response.status_code == 200
+    rows = audit_repository.list_decisions(session, decision_type=DecisionType.RISK_SCORE)
+    assert len(rows) == 1
+    inputs = json.loads(rows[0].inputs_json)
+    output = json.loads(rows[0].output_json)
+    assert inputs["include_experimental_mlp"] is True
+    assert output["experimental_mlp"]["available"] is True
+    assert output["experimental_mlp"]["version"] == model_service.NEURAL_MODEL_VERSION
+    assert "não é uma probabilidade calibrada" in output["experimental_mlp"]["note"]
+    assert output["experimental_mlp"]["days"][0]["score"] == 0.625
+    assert output["days"][0]["model_probability"] == response.json()["days"][0]["model_probability"]
 
 
 def test_publishing_a_limit_records_a_decision(

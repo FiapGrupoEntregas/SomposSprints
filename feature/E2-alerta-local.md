@@ -7,7 +7,7 @@
 | Depende de | E1 |
 | Janela | 19/09 |
 | Responsável | Dev |
-| Status | 🟦 Em revisão (implementado; falta o GIF da simulação) |
+| Status | 🟦 Em revisão (níveis `green` e `red` observados no Serial do Wokwi; LEDs e buzzer ainda não conferidos) |
 
 ## Objetivo
 
@@ -46,7 +46,8 @@ Buzzer: 🟢 desligado · 🟡 um bipe curto ao entrar · 🔴 intermitente a 2 
   só vai direto para 🟢 abaixo disso (com `L = 10`: 8,9° → 🟡, 6,9° → 🟢).
 - `applyOutputs(AlertLevel level)`: LEDs e buzzer, temporizados com `millis()`.
 - Mudança de nível → log `[alert] green → red (tilt 10.4° / limite 10.0°)` e **telemetria
-  imediata**, que fica como `TODO(E4)` no código (a telemetria só existe a partir do E4).
+  imediata**; a publicação, implementada na E4, atualiza o painel sem esperar o próximo intervalo
+  periódico.
 - Entrada no 🔴 → evento `tilt_alert` (enviado 3 vezes, conforme o contrato).
 
 ## Critérios de aceite

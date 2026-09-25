@@ -28,9 +28,12 @@ import pandas as pd  # noqa: E402
 from app.services.model import (  # noqa: E402
     TARGET_CLAIM,
     TARGET_RAIN_CLAIM,
+    OptionalNeuralResult,
     TrainResult,
     save_model,
+    save_optional_neural_model,
     train,
+    train_optional_neural_model,
 )
 
 DATASET_PATH = ROOT / "data" / "dataset_treino.parquet"
@@ -67,12 +70,42 @@ def render_importances(result: TrainResult, top: int = 12) -> str:
     return "\n".join(lines)
 
 
+def report_optional_neural(result: OptionalNeuralResult) -> None:
+    """Imprime métricas da rede à parte; ela nunca participa da escolha publicada."""
+    print(
+        render_table(
+            result.validation,
+            "REDE OPCIONAL — VALIDAÇÃO (2022–2023), limiar escolhido neste corte",
+        )
+    )
+    if result.test:
+        print(
+            render_table(
+                result.test,
+                "REDE OPCIONAL — TESTE (2024), avaliação final sem ajuste",
+            )
+        )
+
+
 def main(argv: list[str] | None = None) -> int:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dataset", type=Path, default=DATASET_PATH)
     parser.add_argument("--alvo", choices=[TARGET_CLAIM, TARGET_RAIN_CLAIM], default=TARGET_CLAIM)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--nao-salvar", action="store_true", help="só imprime, não grava artefato")
+    parser.add_argument(
+        "--somente-rede-opcional",
+        action="store_true",
+        help="treina e salva só o experimento neural, sem tocar no modelo publicado",
+    )
+    parser.add_argument(
+        "--incluir-rede-opcional",
+        action="store_true",
+        help="além do modelo publicado, treina e salva um experimento neural separado",
+    )
     args = parser.parse_args(argv)
 
     logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(message)s")
@@ -87,6 +120,30 @@ def main(argv: list[str] | None = None) -> int:
 
     frame = pd.read_parquet(args.dataset)
     print(f"Dataset: {args.dataset.name} · {len(frame)} linhas · alvo: {args.alvo}")
+    resolved_dataset_path = args.dataset.resolve()
+    try:
+        dataset_reference = resolved_dataset_path.relative_to(ROOT).as_posix()
+    except ValueError:
+        dataset_reference = str(resolved_dataset_path)
+
+    if args.somente_rede_opcional:
+        neural = train_optional_neural_model(frame, target=args.alvo, seed=args.seed)
+        sizes = neural.split_sizes
+        print(
+            f"Divisão temporal — treino ≤ 2021: {sizes['train']} · "
+            f"validação 2022–2023: {sizes['validation']} · teste 2024: {sizes['test']}"
+        )
+        report_optional_neural(neural)
+        if not args.nao_salvar:
+            model_path, metadata_path = save_optional_neural_model(
+                neural, dataset_reference, len(frame)
+            )
+            print(f"\nArtefato neural separado: {model_path.relative_to(ROOT)}")
+            print(f"Metadados neurais: {metadata_path.relative_to(ROOT)}")
+            saved = json.loads(metadata_path.read_text(encoding="utf-8"))
+            assert saved["validation"] == neural.validation
+            assert saved["test"] == neural.test
+        return 0
 
     result = train(frame, target=args.alvo, seed=args.seed)
 
@@ -135,12 +192,23 @@ def main(argv: list[str] | None = None) -> int:
 
     print(render_importances(result))
 
+    neural: OptionalNeuralResult | None = None
+    if args.incluir_rede_opcional:
+        neural = train_optional_neural_model(frame, target=args.alvo, seed=args.seed)
+        report_optional_neural(neural)
+
     if args.nao_salvar:
         return 0
 
-    model_path, metadata_path = save_model(result, str(args.dataset), len(frame))
+    model_path, metadata_path = save_model(result, dataset_reference, len(frame))
     print(f"\nArtefato: {model_path.relative_to(ROOT)}")
     print(f"Metadados: {metadata_path.relative_to(ROOT)}")
+    if neural is not None:
+        neural_path, neural_metadata_path = save_optional_neural_model(
+            neural, dataset_reference, len(frame)
+        )
+        print(f"Artefato neural separado: {neural_path.relative_to(ROOT)}")
+        print(f"Metadados neurais: {neural_metadata_path.relative_to(ROOT)}")
     saved = json.loads(metadata_path.read_text(encoding="utf-8"))
     assert saved["test"] == result.test, "o JSON tem de ter exatamente as métricas impressas"
     return 0

@@ -12,6 +12,7 @@ from sqlmodel import Session
 
 from app.clients.open_meteo import OpenMeteoClient, get_open_meteo_client
 from app.core.logging import request_id_var
+from app.core.security import require_read_access
 from app.db import get_session
 from app.repositories import audit as audit_repository
 from app.schemas.audit import DecisionSource, DecisionType
@@ -26,7 +27,7 @@ from app.services import risk as risk_service
 from app.services import terrain as terrain_service
 from app.services.underwriting import terrain_profile
 
-router = APIRouter(prefix="/farms", tags=["farms"])
+router = APIRouter(prefix="/farms", tags=["farms"], dependencies=[Depends(require_read_access)])
 
 FARM_NOT_FOUND_MESSAGE = "Fazenda não encontrada"
 
@@ -62,6 +63,16 @@ ScenarioQuery = Annotated[
     ),
 ]
 
+ExperimentalMLPQuery = Annotated[
+    bool,
+    Query(
+        description=(
+            "Inclui scores da MLP experimental separada. Não calibrada e sem efeito nos "
+            "alertas, limites ou recomendações; desativada por padrão."
+        )
+    ),
+]
+
 
 @router.get("", response_model=list[FarmSummary])
 def list_farms() -> list[FarmSummary]:
@@ -91,6 +102,7 @@ def get_farm_risk(
     session: SessionDep,
     days: ForecastDaysQuery = risk_service.MAX_FORECAST_DAYS,
     scenario: ScenarioQuery = None,
+    include_experimental_mlp: ExperimentalMLPQuery = False,
 ) -> RiskForecast:
     """Previsão de risco relevo × clima, dia a dia e célula a célula (W3).
 
@@ -99,9 +111,13 @@ def get_farm_risk(
     ficam de fora, senão a trilha cresceria mais rápido que o banco inteiro.
     """
     forecast = risk_service.get_risk_forecast(
-        _require_farm(farm_id), client, days=days, scenario=scenario
+        _require_farm(farm_id),
+        client,
+        days=days,
+        scenario=scenario,
+        include_experimental_mlp=include_experimental_mlp,
     )
-    _record_risk_decision(session, farm_id, days, scenario, forecast)
+    _record_risk_decision(session, farm_id, days, scenario, forecast, include_experimental_mlp)
     return forecast
 
 
@@ -187,6 +203,7 @@ def _record_risk_decision(
     days: int,
     scenario: Scenario | None,
     forecast: RiskForecast,
+    include_experimental_mlp: bool,
 ) -> None:
     """Registra o score na trilha (I5), com um resumo por dia em vez das células."""
     audit_repository.record_decision(
@@ -196,6 +213,7 @@ def _record_risk_decision(
         inputs={
             "days": days,
             "scenario": scenario.value if scenario is not None else None,
+            "include_experimental_mlp": include_experimental_mlp,
             "generated_at": forecast.generated_at.isoformat(),
         },
         output={
@@ -211,7 +229,25 @@ def _record_risk_decision(
                     "model_probability": day.model_probability,
                 }
                 for day in forecast.days
-            ]
+            ],
+            **(
+                {
+                    "experimental_mlp": {
+                        "available": forecast.experimental_mlp.available,
+                        "version": forecast.experimental_mlp.version,
+                        "note": forecast.experimental_mlp.note,
+                        "days": [
+                            {
+                                "date": day.date.isoformat(),
+                                "score": day.experimental_mlp_score,
+                            }
+                            for day in forecast.days
+                        ],
+                    }
+                }
+                if include_experimental_mlp and forecast.experimental_mlp is not None
+                else {}
+            ),
         },
         source=DecisionSource.API,
         request_id=request_id_var.get(),

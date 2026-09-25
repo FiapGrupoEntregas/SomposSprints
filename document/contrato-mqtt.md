@@ -2,17 +2,38 @@
 
 Este é o contrato entre `iot/` e `api/`. **Mudou aqui, muda o firmware e a API no mesmo PR.**
 
-## Broker
+## Segurança do transporte e ambientes
 
 | Item | Valor |
 |---|---|
-| Host | `broker.hivemq.com` |
-| Porta | `1883` (TCP, sem TLS) |
-| Autenticação | nenhuma |
+| Demo local/Wokwi | `broker.hivemq.com:1883`, sem TLS nem autenticação; apenas dados sintéticos |
+| Produção | broker privado, TLS com validação de certificado e credenciais próprias; ACL por dispositivo é configuração obrigatória do broker |
 | Prefixo | `agrishield/fiap-sompo-2026`. Precisa ser igual em `AGRISHIELD_MQTT_TOPIC_PREFIX` (API) e em `TOPIC_PREFIX` (firmware) |
 
-> ⚠️ O broker é **público**: qualquer pessoa pode ler e publicar nesses tópicos. **Nunca** mande dado
-> pessoal, senha ou token. A API valida todo payload e descarta o que não estiver no formato.
+> ⚠️ O broker compartilhado é **público e não autenticado**: qualquer pessoa pode ler, publicar,
+> sobrescrever mensagens retained e forjar telemetria/eventos nesses tópicos. Validar o formato do
+> JSON não autentica a origem. Esse modo serve somente à demonstração com dados sintéticos; não
+> conecte equipamento real nem envie dado pessoal, credencial ou informação operacional.
+
+Com `AGRISHIELD_ENVIRONMENT` diferente de `dev`, a API trata o broker como ambiente de produção:
+se MQTT estiver habilitado, falha no início sem host privado (IP privado ou DNS `.internal`/`.local`),
+CA TLS válida ou usuário e senha. A conexão valida o certificado do broker e usa TLS 1.2 ou superior.
+Certificado e chave de cliente são opcionais, mas precisam ser configurados juntos. As variáveis são
+`AGRISHIELD_MQTT_CA_CERT`, `AGRISHIELD_MQTT_CLIENT_CERT`, `AGRISHIELD_MQTT_CLIENT_KEY`,
+`AGRISHIELD_MQTT_USERNAME` e `AGRISHIELD_MQTT_PASSWORD`. Erros de configuração não exibem o
+conteúdo de credenciais nem de certificados.
+
+Esses guardrails protegem a configuração e o transporte da conexão da API; **não configuram nem
+criam autenticação, autorização ou ACL no broker MQTT**. Use um broker privado com ACLs que permitam
+a cada equipamento publicar apenas em seus tópicos de
+telemetria/eventos/status e assinar apenas seu tópico de configuração; a API deve publicar
+configurações e assinar os tópicos necessários com uma identidade de serviço. Não reutilize
+credenciais entre dispositivos. TLS protege o transporte e a identidade do broker, mas não substitui
+ACL, autenticação do cliente, autorização por tópico nem proteção contra replay de comandos. A
+configuração retained deve ser assinada/autenticada por dispositivo e ter validade e controle
+anti-replay antes de comandar equipamento real.
+
+O prefixo abaixo é público por ser parte da demo e não é um segredo nem mecanismo de autorização.
 
 ## Tópicos
 

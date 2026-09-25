@@ -24,18 +24,70 @@
 #include <DHT.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <float.h>
 #include <math.h>
 #include <string.h>
 #include <time.h>
 
+#if defined(AGRISHIELD_MQTT_TLS)
+#include <WiFiClientSecure.h>
+#include "mqtt_tls_config.h"
+#ifndef AGRISHIELD_WIFI_SSID
+#error "Defina AGRISHIELD_WIFI_SSID no arquivo local mqtt_tls_config.h"
+#endif
+#ifndef AGRISHIELD_WIFI_PASSWORD
+#error "Defina AGRISHIELD_WIFI_PASSWORD no arquivo local mqtt_tls_config.h"
+#endif
+#ifndef AGRISHIELD_MQTT_TLS_HOST
+#error "Defina AGRISHIELD_MQTT_TLS_HOST no arquivo local mqtt_tls_config.h"
+#endif
+#ifndef AGRISHIELD_MQTT_TLS_PORT
+#error "Defina AGRISHIELD_MQTT_TLS_PORT no arquivo local mqtt_tls_config.h"
+#endif
+#ifndef AGRISHIELD_MQTT_TLS_USERNAME
+#error "Defina AGRISHIELD_MQTT_TLS_USERNAME no arquivo local mqtt_tls_config.h"
+#endif
+#ifndef AGRISHIELD_MQTT_TLS_PASSWORD
+#error "Defina AGRISHIELD_MQTT_TLS_PASSWORD no arquivo local mqtt_tls_config.h"
+#endif
+#ifndef AGRISHIELD_MQTT_TLS_CA_CERT
+#error "Defina AGRISHIELD_MQTT_TLS_CA_CERT no arquivo local mqtt_tls_config.h"
+#endif
+#endif
+
 // ============================ Configuração ============================
 
+#if defined(AGRISHIELD_MQTT_TLS)
+static_assert(sizeof(AGRISHIELD_WIFI_SSID) > 1, "o SSID Wi-Fi nao pode ser vazio");
+static_assert(sizeof(AGRISHIELD_WIFI_PASSWORD) > 1, "a senha Wi-Fi nao pode ser vazia");
+const char* WIFI_SSID = AGRISHIELD_WIFI_SSID;
+const char* WIFI_PASSWORD = AGRISHIELD_WIFI_PASSWORD;
+#else
 const char* WIFI_SSID = "Wokwi-GUEST";
 const char* WIFI_PASSWORD = "";
+#endif
+#if defined(AGRISHIELD_MQTT_TLS)
+const int WIFI_CHANNEL = 0;  // hardware: varre os canais; nao presume o canal do Wokwi
+#else
 const int WIFI_CHANNEL = 6;  // canal fixo acelera a conexão no Wokwi
+#endif
 
+#if defined(AGRISHIELD_MQTT_TLS)
+static_assert(sizeof(AGRISHIELD_MQTT_TLS_HOST) > 1, "o host MQTT TLS nao pode ser vazio");
+static_assert(sizeof(AGRISHIELD_MQTT_TLS_USERNAME) > 1,
+              "o usuario MQTT TLS nao pode ser vazio");
+static_assert(sizeof(AGRISHIELD_MQTT_TLS_PASSWORD) > 1,
+              "a senha MQTT TLS nao pode ser vazia");
+static_assert(sizeof(AGRISHIELD_MQTT_TLS_CA_CERT) > 1,
+              "o certificado CA MQTT TLS nao pode ser vazio");
+static_assert(AGRISHIELD_MQTT_TLS_PORT > 0 && AGRISHIELD_MQTT_TLS_PORT <= 65535,
+              "a porta MQTT TLS precisa estar entre 1 e 65535");
+const char* MQTT_HOST = AGRISHIELD_MQTT_TLS_HOST;
+constexpr uint16_t MQTT_PORT = AGRISHIELD_MQTT_TLS_PORT;
+#else
 const char* MQTT_HOST = "broker.hivemq.com";
-const uint16_t MQTT_PORT = 1883;
+constexpr uint16_t MQTT_PORT = 1883;
+#endif
 // Precisa ser igual a AGRISHIELD_MQTT_TOPIC_PREFIX da API.
 const char* TOPIC_PREFIX = "agrishield/fiap-sompo-2026";
 const char* DEVICE_ID = "tractor-01";
@@ -147,6 +199,8 @@ const unsigned long EVENT_MAX_AGE_MS = 30000;  // evento velho demais não vale 
 // Buffer do PubSubClient: o evento rollover com 30 linhas de contexto dá ~1 KB (E5).
 const uint16_t MQTT_BUFFER_SIZE = 2048;
 const uint16_t MQTT_OVERHEAD_BYTES = 128;  // cabeçalho MQTT + tópico, descontados do buffer
+const uint16_t MQTT_MAX_CONFIG_PAYLOAD_BYTES = MQTT_BUFFER_SIZE - MQTT_OVERHEAD_BYTES;
+const size_t CONFIG_REASON_MAX_BYTES = 128;
 
 // Preferences/NVS (E3). As chaves têm no máximo 15 caracteres.
 const char* NVS_NAMESPACE = "agrishield";
@@ -155,7 +209,11 @@ const char* NVS_KEY_WARN_RATIO = "warn_ratio";
 
 // ============================== Estado ================================
 
+#if defined(AGRISHIELD_MQTT_TLS)
+WiFiClientSecure wifiClient;
+#else
 WiFiClient wifiClient;
+#endif
 PubSubClient mqtt(wifiClient);
 Adafruit_MPU6050 mpu;
 // clkDuring e clkAfter iguais: o barramento fica em 400 kHz o tempo todo (o padrão da biblioteca
@@ -347,6 +405,7 @@ unsigned long lastWifiAttemptMs = 0;
 void applyConfig(const byte* payload, unsigned int length);
 // readEnv() (sensores) usa a tolerância a falhas do DHT22, que é lógica pura e fica mais abaixo.
 EnvHold updateEnvHold(const EnvHold& current, float reading, unsigned long nowMs);
+uint32_t currentEpochSeconds();
 
 // ============================ Conectividade ============================
 
@@ -425,12 +484,24 @@ void onMqttMessage(char* topic, byte* payload, unsigned int length) {
 }
 
 void connectMqtt() {
+#if defined(AGRISHIELD_MQTT_TLS)
+  if (currentEpochSeconds() == 0) {
+    Serial.println("[mqtt] TLS aguardando sincronizacao NTP para validar o certificado CA");
+    return;
+  }
+#endif
   String clientId = String("agrishield-") + DEVICE_ID + "-" + String((uint32_t)esp_random(), HEX);
   Serial.printf("[mqtt] conectando em %s:%u...\n", MQTT_HOST, MQTT_PORT);
 
   // LWT: se o ESP32 cair, o broker publica "offline" no tópico de status.
+#if defined(AGRISHIELD_MQTT_TLS)
+  bool connected = mqtt.connect(clientId.c_str(), AGRISHIELD_MQTT_TLS_USERNAME,
+                                AGRISHIELD_MQTT_TLS_PASSWORD, topicStatus.c_str(), 1, true,
+                                statusOffline.c_str());
+#else
   bool connected = mqtt.connect(clientId.c_str(), nullptr, nullptr, topicStatus.c_str(), 1, true,
                                 statusOffline.c_str());
+#endif
   if (!connected) {
     Serial.printf("[mqtt] falhou (state=%d), nova tentativa em %lus\n", mqtt.state(),
                   MQTT_RETRY_INTERVAL_MS / 1000);
@@ -590,11 +661,28 @@ int fireConditions(float tempC, float humidityPct, float windMaxKmh) {
 
 // Validação do config recebido da API (E3). Ver document/contrato-mqtt.md#config-w4--e3-retained.
 bool isValidTiltLimit(float value) {
-  return !isnan(value) && value >= MIN_TILT_LIMIT_DEG && value <= MAX_TILT_LIMIT_DEG;
+  return isfinite(value) && value >= MIN_TILT_LIMIT_DEG && value <= MAX_TILT_LIMIT_DEG;
 }
 
 bool isValidWarnRatio(float value) {
-  return !isnan(value) && value >= MIN_WARN_RATIO && value <= MAX_WARN_RATIO;
+  return isfinite(value) && value >= MIN_WARN_RATIO && value <= MAX_WARN_RATIO;
+}
+
+bool isSafeConfigText(JsonVariant field, size_t maxBytes) {
+  if (!field.is<const char*>()) {
+    return false;
+  }
+  JsonString text = field.as<JsonString>();
+  if (text.size() > maxBytes) {
+    return false;
+  }
+  for (size_t i = 0; i < text.size(); i++) {
+    uint8_t character = (uint8_t)text.c_str()[i];
+    if (character < 0x20 || character == 0x7F) {
+      return false;
+    }
+  }
+  return true;
 }
 
 /*
@@ -1228,10 +1316,13 @@ void checkConfigExpiry() {
 
 /*
  * Aplica o config recebido no tópico retained (E3).
- * - tilt_limit_deg fora de [3, 45] é ignorado e o limite atual continua valendo.
+ * - tilt_limit_deg é obrigatório e precisa estar em [3, 45]; caso contrário a mensagem inteira é
+ *   ignorada.
  * - warn_ratio fora de [0,5, 0,95], ausente ou não numérico: mantém o atual.
  * - campos desconhecidos são ignorados; wind_max_kmh (E6) e soil_state/risk_level/reason (E7) ficam
  *   guardados para quando essas features chegarem.
+ * - textos conhecidos e datas são validados antes de serem guardados; cada campo opcional inválido
+ *   mantém o valor anterior.
  * Roda dentro do callback do PubSubClient, então não publica nada aqui: o evento limit_applied vai
  * para a fila e o recálculo do nível fica marcado em alertRecheckPending, ambos tratados no loop().
  */
@@ -1239,6 +1330,11 @@ void applyConfig(const byte* payload, unsigned int length) {
   if (length == 0) {
     // Payload vazio é como o broker limpa um retained; não é um config, então nada muda.
     Serial.printf("[config] retained limpo no broker; seguindo com %.1f°\n", tiltLimitDeg);
+    return;
+  }
+  if (length > MQTT_MAX_CONFIG_PAYLOAD_BYTES) {
+    Serial.printf("[config] payload excede %u bytes; mensagem ignorada\n",
+                  MQTT_MAX_CONFIG_PAYLOAD_BYTES);
     return;
   }
 
@@ -1253,54 +1349,88 @@ void applyConfig(const byte* payload, unsigned int length) {
     return;
   }
 
+  JsonVariant limitField = doc["tilt_limit_deg"];
+  if (!limitField.is<double>()) {
+    Serial.println("[config] tilt_limit_deg obrigatorio e numerico; mensagem ignorada");
+    return;
+  }
+  double parsedLimit = limitField.as<double>();
+  if (!isfinite(parsedLimit) || parsedLimit < MIN_TILT_LIMIT_DEG ||
+      parsedLimit > MAX_TILT_LIMIT_DEG) {
+    Serial.printf("[config] limite invalido; esperado [%.1f°, %.1f°]; mensagem ignorada\n",
+                  MIN_TILT_LIMIT_DEG, MAX_TILT_LIMIT_DEG);
+    return;
+  }
+
   float previousLimit = tiltLimitDeg;
   float previousRatio = warnRatio;
-
-  JsonVariant limitField = doc["tilt_limit_deg"];
-  if (limitField.isNull()) {
-    Serial.println("[config] sem tilt_limit_deg; mantendo o limite atual");
-  } else if (!limitField.is<float>()) {
-    Serial.println("[config] tilt_limit_deg nao numerico; mantendo o limite atual");
-  } else {
-    float value = limitField.as<float>();
-    if (isValidTiltLimit(value)) {
-      tiltLimitDeg = value;
-    } else {
-      Serial.printf("[config] limite invalido: %.1f° fora de [%.1f°, %.1f°]; mantendo %.1f°\n",
-                    value, MIN_TILT_LIMIT_DEG, MAX_TILT_LIMIT_DEG, tiltLimitDeg);
-    }
-  }
+  tiltLimitDeg = (float)parsedLimit;
 
   JsonVariant ratioField = doc["warn_ratio"];
   if (!ratioField.isNull()) {
-    if (ratioField.is<float>() && isValidWarnRatio(ratioField.as<float>())) {
-      warnRatio = ratioField.as<float>();
+    double parsedRatio = ratioField.is<double>() ? ratioField.as<double>() : NAN;
+    if (isfinite(parsedRatio) && isValidWarnRatio((float)parsedRatio)) {
+      warnRatio = (float)parsedRatio;
     } else {
       Serial.printf("[config] warn_ratio invalido; mantendo %.2f\n", warnRatio);
     }
   }
 
   // Guardados para as features seguintes (ver tabela do contrato MQTT).
-  if (doc["wind_max_kmh"].is<float>()) {
-    configWindMaxKmh = doc["wind_max_kmh"].as<float>();
+  JsonVariant windField = doc["wind_max_kmh"];
+  if (!windField.isNull()) {
+    double parsedWind = windField.is<double>() ? windField.as<double>() : NAN;
+    if (isfinite(parsedWind) && parsedWind >= 0.0 && parsedWind <= FLT_MAX) {
+      configWindMaxKmh = (float)parsedWind;
+    } else {
+      Serial.println("[config] wind_max_kmh invalido; mantendo o valor atual");
+    }
   }
-  if (doc["soil_state"].is<const char*>()) {
-    configSoilState = doc["soil_state"].as<const char*>();
+  JsonVariant soilField = doc["soil_state"];
+  if (!soilField.isNull()) {
+    if (soilField.is<const char*>() &&
+        (soilField == "dry" || soilField == "moist" || soilField == "saturated")) {
+      configSoilState = soilField.as<const char*>();
+    } else {
+      Serial.println("[config] soil_state invalido; mantendo o valor atual");
+    }
   }
-  if (doc["risk_level"].is<const char*>()) {
-    configRiskLevel = doc["risk_level"].as<const char*>();
+  JsonVariant riskField = doc["risk_level"];
+  if (!riskField.isNull()) {
+    if (riskField.is<const char*>() &&
+        (riskField == "green" || riskField == "yellow" || riskField == "red")) {
+      configRiskLevel = riskField.as<const char*>();
+    } else {
+      Serial.println("[config] risk_level invalido; mantendo o valor atual");
+    }
   }
-  if (doc["reason"].is<const char*>()) {
-    configReason = doc["reason"].as<const char*>();
+  JsonVariant reasonField = doc["reason"];
+  if (!reasonField.isNull()) {
+    if (isSafeConfigText(reasonField, CONFIG_REASON_MAX_BYTES)) {
+      configReason = reasonField.as<const char*>();
+    } else {
+      Serial.println("[config] reason invalido ou maior que 128 bytes; mantendo o valor atual");
+    }
   }
   // is<double>() aceita tanto 1789550000 quanto 1789550000.0, e o double guarda o epoch inteiro sem
   // perder precisão (um float perderia até ~2 min). Config sem valid_until não herda o vencimento
   // do config anterior: seria colar uma validade velha num limite novo.
   JsonVariant validUntilField = doc["valid_until"];
-  double validUntil = validUntilField.is<double>() ? validUntilField.as<double>() : 0.0;
-  configValidUntil =
-      (validUntil > 0.0 && validUntil <= 4294967295.0) ? (uint32_t)validUntil : 0;
-  configExpiredLogged = false;
+  if (validUntilField.isNull()) {
+    configValidUntil = 0;
+    configExpiredLogged = false;
+  } else if (validUntilField.is<double>()) {
+    double validUntil = validUntilField.as<double>();
+    if (isfinite(validUntil) && validUntil >= 0.0 && validUntil <= 4294967295.0 &&
+        floor(validUntil) == validUntil) {
+      configValidUntil = (uint32_t)validUntil;
+      configExpiredLogged = false;
+    } else {
+      Serial.println("[config] valid_until invalido; mantendo o valor atual");
+    }
+  } else {
+    Serial.println("[config] valid_until invalido; mantendo o valor atual");
+  }
 
   bool changed =
       fabsf(tiltLimitDeg - previousLimit) >= 0.05f || fabsf(warnRatio - previousRatio) >= 0.005f;
@@ -1588,6 +1718,12 @@ void setup() {
     }
   }
 
+#if defined(AGRISHIELD_MQTT_TLS)
+  wifiClient.setCACert(AGRISHIELD_MQTT_TLS_CA_CERT);
+  Serial.println("[mqtt] modo TLS: certificado CA validado e autenticacao habilitada");
+#else
+  Serial.println("[mqtt] modo DEMO: MQTT em texto claro, somente para desenvolvimento/Wokwi");
+#endif
   mqtt.setServer(MQTT_HOST, MQTT_PORT);
   mqtt.setBufferSize(MQTT_BUFFER_SIZE);         // eventos com janela de contexto (E5/E8)
   mqtt.setSocketTimeout(MQTT_SOCKET_TIMEOUT_S); // teto do mqtt.connect(), que é síncrono

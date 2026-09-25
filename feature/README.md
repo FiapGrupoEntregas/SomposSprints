@@ -24,7 +24,7 @@ arquivo dela. Ao terminar, atualize o **status** nesta tabela.
 |---|---|---|---|---|---|---|---|
 | [D1](D1-ingestao-psr.md) | Ingestão de dados reais de sinistro (PSR/SISSER) | P0 | api | — | 19/09 | dev-dados | ✅ |
 | [D2](D2-dataset-relevo-clima.md) | Dataset de treino: relevo × clima × sinistro | P0 | api | D1, I1, W2 | 20/09 | dev-dados | ✅ (2.256 linhas — acima das 2.000 exigidas) |
-| [D3](D3-modelo-preditivo.md) | Modelo preditivo de risco e métricas | P0 | api | D2 | 21/09 | dev-dados | ✅ (retreinado em 2.256 linhas: supera o baseline, com ressalvas) |
+| [D3](D3-modelo-preditivo.md) | Modelo preditivo de risco e métricas | P0 | api, front-web | D2 | 21/09 | dev-dados + dev-front | ✅ (modelo oficial e experimento MLP opt-in documentados; score neural não operacional) |
 
 ## Plataforma: API + front-web (W)
 
@@ -48,11 +48,11 @@ arquivo dela. Ao terminar, atualize o **status** nesta tabela.
 
 | ID | Feature | Prioridade | Componente | Depende de | Janela | Agente | Status |
 |---|---|---|---|---|---|---|---|
-| [E1](E1-inclinometro.md) | Inclinômetro (roll/pitch) | P0 | MPU6050 | — | 19/09 | dev-iot | 🟦 em revisão (falta evidência no Wokwi) |
-| [E2](E2-alerta-local.md) | Alerta local (LEDs + buzzer) | P0 | LEDs, buzzer | E1 | 19/09 | dev-iot | 🟦 em revisão (falta evidência no Wokwi) |
-| [E3](E3-limite-via-mqtt.md) | Receber o limite do dia via MQTT | P0 | Wi-Fi | contrato MQTT | 20/09 | dev-iot | 🟦 em revisão (falta evidência no Wokwi) |
-| [E4](E4-telemetria.md) | Telemetria via MQTT | P0 | Wi-Fi | E1 | 20/09 | dev-iot | 🟦 em revisão (falta evidência no Wokwi) |
-| [E5](E5-deteccao-de-capotamento.md) | Detecção de capotamento | P1 | MPU6050 | E1, E4 | 21/09 | dev-iot | 🟦 em revisão (falta evidência no Wokwi) |
+| [E1](E1-inclinometro.md) | Inclinômetro (roll/pitch) | P0 | MPU6050 | — | 19/09 | dev-iot | ✅ (ângulos conferidos no Wokwi em 25/09) |
+| [E2](E2-alerta-local.md) | Alerta local (LEDs + buzzer) | P0 | LEDs, buzzer | E1 | 19/09 | dev-iot | 🟦 em revisão (`green`/`red` vistos no Serial; LEDs e buzzer pendentes) |
+| [E3](E3-limite-via-mqtt.md) | Receber o limite do dia via MQTT | P0 | Wi-Fi | contrato MQTT | 20/09 | dev-iot | 🟦 em revisão (retained e `limit_applied` observados; falta `mosquitto_pub` manual e envio pelo W4) |
+| [E4](E4-telemetria.md) | Telemetria via MQTT | P0 | Wi-Fi | E1 | 20/09 | dev-iot | 🟦 em revisão (cadência de 5 s e NTP observados; falta validar recebimento pela API) |
+| [E5](E5-deteccao-de-capotamento.md) | Detecção de capotamento | P1 | MPU6050 | E1, E4 | 21/09 | dev-iot | 🟦 em revisão (`rollover` visto no Serial; evento/contexto e saídas pendentes) |
 | [E6](E6-sensor-ambiente.md) | Temperatura/umidade e regra dos 30 local | P1 | DHT22 | E3, E4 | 22/09 | dev-iot | 🟦 em revisão (falta evidência no Wokwi) |
 | [E7](E7-display-oled.md) | Display OLED | P2 | SSD1306 | E2, E3 | 23/09 | dev-iot | 🟦 em revisão (falta evidência no Wokwi) |
 | [E8](E8-botao-de-ocorrencia.md) | Botão de ocorrência | P2 | botão | E5 | 23/09 | dev-iot | 🟦 em revisão (falta evidência no Wokwi) |

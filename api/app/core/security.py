@@ -1,16 +1,16 @@
 """Controle de acesso por chave de API (I5, ADR-013).
 
 O enunciado pede **controle de acesso**; login com perfis não cabe no prazo. A decisão registrada
-(ADR-013) é: chave no cabeçalho `X-API-Key` nos endpoints de **escrita e de publicação**, leitura
-aberta na demo, e tudo o que decide fica na trilha de auditoria.
+(ADR-013) é: chave no cabeçalho `X-API-Key` nas escritas e publicações e, fora do modo `dev`
+explícito, nas leituras de dados operacionais; tudo o que decide fica na trilha de auditoria.
 
 Três cuidados que valem explicação:
 
 - **Comparação em tempo constante** (`secrets.compare_digest`), e sem `break` no laço: sair mais
   cedo na chave certa daria, pelo tempo de resposta, uma pista de quantas chaves existem.
 - **Falha fechada.** Sem `AGRISHIELD_API_KEYS` configurada, nenhuma chave pode ser válida, então
-  toda escrita é recusada. O contrário — liberar quando ninguém configurou — transformaria um
-  esquecimento de ambiente em porta aberta.
+  toda operação protegida é recusada. O contrário — liberar quando ninguém configurou —
+  transformaria um esquecimento de ambiente em porta aberta.
 - **A chave nunca vai para o log.** A tentativa recusada é registrada com a chave **mascarada**
   (`****1234`), que é o suficiente para investigar sem guardar o segredo.
 """
@@ -78,8 +78,8 @@ def require_api_key(
     configured = parse_api_keys(settings.api_keys)
     if not configured:
         logger.error(
-            "AGRISHIELD_API_KEYS não está configurada: toda escrita será recusada. "
-            "Defina a variável no .env antes da demo."
+            "AGRISHIELD_API_KEYS não está configurada: toda operação protegida será recusada. "
+            "Defina a variável de ambiente."
         )
 
     if not is_valid_api_key(x_api_key, configured):
@@ -96,6 +96,17 @@ def require_api_key(
         )
 
     return mask_api_key(x_api_key)
+
+
+def require_read_access(
+    request: Request,
+    settings: Annotated[Settings, Depends(get_settings)],
+    x_api_key: Annotated[str | None, Header(alias=API_KEY_HEADER)] = None,
+) -> None:
+    """Abre leituras apenas no modo `dev` explícito; os demais ambientes exigem chave."""
+    if settings.environment == "dev":
+        return
+    require_api_key(request, settings, x_api_key)
 
 
 ApiKeyDep = Annotated[str, Depends(require_api_key)]

@@ -71,7 +71,9 @@ REGION_PURPOSE = (
 )
 CROP_PURPOSE = (
     "Para subscrição e produto: mostra quais culturas e quais causas concentram sinistro — "
-    "apoia a decisão de onde criar cobertura, franquia diferenciada e ação de prevenção."
+    "apoia a decisão de onde criar cobertura, franquia diferenciada e ação de prevenção. "
+    "Este recorte vem da carteira agrícola do PSR/SISSER; não representa o tipo de operação nem "
+    "o risco de acidente de uma máquina."
 )
 
 

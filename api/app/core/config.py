@@ -21,12 +21,13 @@ class Settings(BaseSettings):
 
     app_name: str = "AgriShield API"
     version: str = "0.1.0"
-    environment: str = "dev"
+    # Só `dev` abre leituras sem chave; valor ausente/ambíguo fica fechado.
+    environment: str = "production"
 
     # Segurança (I5, ADR-013) — chaves aceitas em `X-API-Key`, separadas por vírgula.
-    # Vazio por padrão, de propósito: sem chave configurada, **nenhuma escrita é aceita**
-    # (falha fechada). Configure `AGRISHIELD_API_KEYS` no .env antes da demo.
-    api_keys: str = ""
+    # Vazio por padrão, de propósito: sem chave configurada, **nenhuma operação protegida é
+    # aceita** (falha fechada). Configure `AGRISHIELD_API_KEYS` no .env antes da demo.
+    api_keys: str = Field(default="", repr=False)
     # Por quantos dias a trilha de auditoria (`decision_log`) é mantida (I5).
     decision_retention_days: int = 30
 
@@ -46,6 +47,12 @@ class Settings(BaseSettings):
     # Desligue (`false`) para subir a API sem tocar no broker; é o que os testes fazem.
     mqtt_enabled: bool = True
     mqtt_client_id_suffix: str = Field(default_factory=_random_client_id_suffix)
+    # TLS do broker. Em produção, o CA é obrigatório; certificado/chave do cliente são opcionais.
+    mqtt_ca_cert: str = ""
+    mqtt_client_cert: str = ""
+    mqtt_client_key: str = Field(default="", repr=False)
+    mqtt_username: str = ""
+    mqtt_password: str = Field(default="", repr=False)
     # Segundos entre as tentativas de reconexão do paho (mínimo e máximo, com backoff).
     mqtt_reconnect_min_s: int = 1
     mqtt_reconnect_max_s: int = 30

@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from app.clients.open_meteo import OpenMeteoClient, get_open_meteo_client
 from app.core.clock import today_local
 from app.core.logging import request_id_var
+from app.core.security import require_read_access
 from app.db import get_session
 from app.repositories import audit as audit_repository
 from app.schemas.audit import DecisionSource, DecisionType
@@ -37,13 +38,13 @@ MISSING_INPUT_MESSAGE = "Informe 'case_id' ou o trio 'lat', 'lon' e 'date'"
 OpenMeteoDep = Annotated[OpenMeteoClient, Depends(get_open_meteo_client)]
 
 
-@router.get("/cases", response_model=list[ReplayCase])
+@router.get("/cases", response_model=list[ReplayCase], dependencies=[Depends(require_read_access)])
 def list_cases() -> list[ReplayCase]:
     """Casos reais curados pelo time, cada um com a fonte e a precisão da coordenada (W9)."""
     return list(replay_service.load_cases())
 
 
-@router.get("/summary", response_model=ReplaySummary)
+@router.get("/summary", response_model=ReplaySummary, dependencies=[Depends(require_read_access)])
 def get_summary(client: OpenMeteoDep) -> ReplaySummary:
     """Placar dos casos cadastrados, com a ressalva junto (W9).
 

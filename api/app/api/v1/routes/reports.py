@@ -19,6 +19,7 @@ from fastapi.responses import StreamingResponse
 from sqlmodel import Session
 
 from app.clients.open_meteo import OpenMeteoClient, WeatherUnavailableError, get_open_meteo_client
+from app.core.security import require_read_access
 from app.db import get_session
 from app.schemas.report import CropReport, EquipmentReport, FarmProfileSummary, RegionReport
 from app.services import farms as farms_service
@@ -28,7 +29,7 @@ from app.services.underwriting import terrain_profile
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/reports", tags=["reports"])
+router = APIRouter(prefix="/reports", tags=["reports"], dependencies=[Depends(require_read_access)])
 
 DEVICE_NOT_FOUND_MESSAGE = "Equipamento não encontrado"
 

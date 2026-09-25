@@ -1,0 +1,124 @@
+{
+  "version": "v1",
+  "model_type": "MLPClassifier",
+  "architecture": {
+    "hidden_layer_sizes": [
+      8
+    ],
+    "alpha": 10.0,
+    "max_iter": 1000,
+    "early_stopping": false
+  },
+  "trained_at": "2026-09-25T18:32:22+00:00",
+  "seed": 42,
+  "scikit_learn_version": "1.9.1",
+  "dataset": {
+    "path": "data/dataset_treino.parquet",
+    "rows": 2256
+  },
+  "target": "target_claim",
+  "split": {
+    "train": "<= 2021",
+    "validation": [
+      2022,
+      2023
+    ],
+    "test": 2024,
+    "sizes": {
+      "train": 1447,
+      "validation": 504,
+      "test": 305
+    }
+  },
+  "features": {
+    "numeric": [
+      "slope_mean_deg",
+      "slope_max_deg",
+      "elevation_mean_m",
+      "elevation_range_m",
+      "pct_lowland",
+      "pct_exposed",
+      "rain_total_mm",
+      "rain_max_day_mm",
+      "days_rain72h_ge30",
+      "days_thunderstorm",
+      "gust_max_kmh",
+      "temp_max_c",
+      "rh_min_pct",
+      "dry_spell_max_days",
+      "weather_days",
+      "area_ha",
+      "coverage_days",
+      "start_month"
+    ],
+    "categorical": [
+      "crop_group",
+      "state",
+      "aspect_label",
+      "coordinate_source"
+    ]
+  },
+  "threshold": 0.4381,
+  "validation": {
+    "baseline_regras": {
+      "n": 504,
+      "positives": 62,
+      "positive_rate": 0.123,
+      "roc_auc": 0.4994,
+      "pr_auc": 0.1262,
+      "threshold": 0.0627,
+      "recall": 0.9677,
+      "precision": 0.1351,
+      "true_negatives": 58,
+      "false_positives": 384,
+      "false_negatives": 2,
+      "true_positives": 60
+    },
+    "rede_neural_opcional": {
+      "n": 504,
+      "positives": 62,
+      "positive_rate": 0.123,
+      "roc_auc": 0.5582,
+      "pr_auc": 0.1393,
+      "threshold": 0.4381,
+      "recall": 0.8387,
+      "precision": 0.152,
+      "true_negatives": 152,
+      "false_positives": 290,
+      "false_negatives": 10,
+      "true_positives": 52
+    }
+  },
+  "test": {
+    "baseline_regras": {
+      "n": 305,
+      "positives": 26,
+      "positive_rate": 0.0852,
+      "roc_auc": 0.4041,
+      "pr_auc": 0.0744,
+      "threshold": 0.0627,
+      "recall": 0.8462,
+      "precision": 0.0806,
+      "true_negatives": 28,
+      "false_positives": 251,
+      "false_negatives": 4,
+      "true_positives": 22
+    },
+    "rede_neural_opcional": {
+      "n": 305,
+      "positives": 26,
+      "positive_rate": 0.0852,
+      "roc_auc": 0.6369,
+      "pr_auc": 0.1502,
+      "threshold": 0.4381,
+      "recall": 0.8846,
+      "precision": 0.108,
+      "true_negatives": 89,
+      "false_positives": 190,
+      "false_negatives": 3,
+      "true_positives": 23
+    }
+  },
+  "test_used_for_selection_or_tuning": false,
+  "role": "experimento complementar; não selecionado nem usado pela API/W13"
+}

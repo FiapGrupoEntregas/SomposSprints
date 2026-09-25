@@ -18,6 +18,7 @@ __pycache__/
 # Segredos e configuração local
 .env
 .streamlit/secrets.toml
+iot/include/mqtt_tls_config.h
 
 # Dados brutos baixados por script (ver document/dados-e-modelo.md)
 data/raw/

@@ -11,16 +11,18 @@
 
 ## Objetivo
 
-Entregar o requisito de **relatórios com tendências de risco por equipamento, região ou tipo de
-operação**, com leitura adequada para cada perfil de usuário (operador, gestor de frota, técnico de
-manutenção e analista da seguradora).
+Entregar relatórios com tendências por equipamento e região e análises por cultura, atendendo ao
+requisito de recortes por equipamento, região ou tipo de operação **na medida permitida pelos dados
+disponíveis**. A base PSR/SISSER contém cultura agrícola, não telemetria ou tipo de operação da
+máquina; por isso o relatório por cultura é um recorte da carteira agrícola, não uma medição da
+operação do equipamento. As telas devem deixar essa distinção clara para cada perfil de usuário.
 
 ## Escopo
 
 **Inclui**
 - **Por equipamento**: horas operando, % do tempo acima do limite, alertas por dia, tendência de 7 dias (usa a telemetria do I3).
 - **Por região** (município/UF): sinistros reais do PSR (D1), perfil de terreno das fazendas (W8) e dias de risco previstos.
-- **Por tipo de operação/cultura**: taxa de sinistro por cultura e por evento preponderante, a partir do PSR.
+- **Por cultura (proxy disponível, não tipo de operação da máquina)**: taxa de sinistro por cultura e por evento preponderante, a partir do PSR.
 - Exportação em CSV de cada relatório.
 - Página **Relatórios** no front, com filtros (período, UF, cultura, equipamento) e gráficos de série temporal.
 

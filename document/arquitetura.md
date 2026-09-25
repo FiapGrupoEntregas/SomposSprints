@@ -10,7 +10,7 @@ flowchart LR
         DB[("SQLite")]
         WEB["front-web/ — Streamlit"]
     end
-    BROKER[("broker.hivemq.com<br/>MQTT público")]
+    BROKER[("MQTT externo<br/>demo: público · produção: privado + TLS/ACL")]
     ESP["iot/ — ESP32 no Wokwi<br/>MPU6050 · DHT22 · LEDs · buzzer · OLED · botão"]
     TG["Telegram (P2, não implementado)"]
 
@@ -27,7 +27,7 @@ flowchart LR
 | **API** | `api/` | Busca dados externos, calcula relevo, risco e limite dinâmico, fala MQTT com o equipamento, guarda telemetria e eventos e expõe tudo em REST | Interface |
 | **Front-web** | `front-web/` | Mapas, gráficos, painéis, formulários | Nenhuma regra de negócio. Não fala MQTT nem acessa a Open-Meteo |
 | **Dispositivo** | `iot/` | Mede a inclinação e o ambiente, aplica localmente o limite recebido, alerta o operador, detecta capotamento | Não calcula risco climático. Só aplica o limite que a API manda |
-| **Broker MQTT** | externo | Entrega mensagens entre a API e o ESP32 | Nada é guardado nele além das mensagens retained |
+| **Broker MQTT** | externo | Na demo, broker público com dados sintéticos; em produção, broker privado com TLS, autenticação e ACL por dispositivo | O broker público não autentica origem nem protege confidencialidade; nunca usar com equipamento ou dados reais |
 | **Open-Meteo** | externo | Elevação (DEM de 90 m), previsão, histórico | — |
 | **Dados e modelo** | `api/app/services/` + `data/` | Ingestão do PSR (sinistros reais), dataset relevo × clima, treino e métricas. O artefato do modelo é carregado pela API | Não treina em produção |
 
@@ -236,7 +236,15 @@ existe**.
   `record_decision(..., model_version=...)`, porque ela muda a cada retreino e não pode virar
   constante no código. `RULES_VERSION`, essa sim, é fixa e conferida contra o título de
   `regras-de-risco.md` por teste.
-- **Segurança e rastreabilidade** (I5): chave de API nos endpoints de escrita, log estruturado com `request_id` e tabela `decision_log` com entrada, saída e versão de regra/modelo de cada decisão.
+- **Segurança de leitura e rastreabilidade** (I5): `X-API-Key` é obrigatório em produção para as
+  rotas de fazendas, equipamentos, relatórios e replay, além das rotas de escrita/publicação e da
+  auditoria. Leituras sem chave ficam públicas somente com `AGRISHIELD_ENVIRONMENT=dev` explícito;
+  ambiente ausente ou diferente de `dev` falha fechado. `/health` permanece público.
+- **Segurança MQTT:** com MQTT ativo fora de `dev`, a API exige host privado, TLS com CA validável e
+  credenciais próprias do broker; os nomes das variáveis estão em
+  [contrato-mqtt.md](contrato-mqtt.md). Isso configura somente o cliente e o transporte: não cria
+  autenticação, autorização nem ACL no broker. O operador ainda precisa configurar ACL por tópico
+  no broker privado.
 
 ## Fora do escopo (vai para o roadmap do pitch)
 

@@ -7,7 +7,7 @@
 | Depende de | [contrato MQTT](../document/contrato-mqtt.md#config-w4--e3-retained) |
 | Janela | 19/09 |
 | Responsável | Dev |
-| Status | 🟦 Em revisão (implementado; falta o GIF da simulação) |
+| Status | 🟦 Em revisão (configuração retained e `limit_applied` observados no Wokwi; falta teste manual com `mosquitto_pub` e envio pelo W4) |
 
 ## Objetivo
 
@@ -45,9 +45,9 @@ Fazer o dispositivo **aplicar o limite calculado pela API**: o limite de 15° vi
 ## Critérios de aceite
 
 - [ ] `mosquitto_pub -r … -m '{"tilt_limit_deg":10}'` → o limite muda em ≤ 2 s e o nível do E2 é recalculado na hora (conferir no Wokwi, T6). Implementado: `applyConfig` marca `alertRecheckPending` e o `loop()` chama `updateAlert` na volta seguinte, < 10 ms.
-- [ ] Reiniciar a simulação → o limite 10° volta ao conectar (conferir no Wokwi, T6). Implementado: `connectMqtt` assina `topicConfig` com QoS 1 logo após o `connect`, e o `config` é retained.
+- [x] Reiniciar a simulação → o limite retained 10° volta ao conectar (observado no Wokwi em 25/09/2026; ver [evidência](../document/evidencias/2026-09-25-inclinometro-wokwi.md)). Implementado: `connectMqtt` assina `topicConfig` com QoS 1 logo após o `connect`, e o `config` é retained.
 - [x] `{"tilt_limit_deg": 90}` e JSON quebrado são ignorados sem travar (`isValidTiltLimit` + guarda de `DeserializationError` em `applyConfig`; verificado no host com o ArduinoJson do `libdeps`).
-- [ ] O evento `limit_applied` aparece no broker (conferir no Wokwi, T6). Implementado em `queueLimitApplied`, 3 envios pela fila.
+- [x] O evento `limit_applied` é publicado no broker (três envios confirmados no Serial do Wokwi em 25/09/2026; ver [evidência](../document/evidencias/2026-09-25-inclinometro-wokwi.md)). Implementado em `queueLimitApplied`, 3 envios pela fila.
 
 ## Tarefas
 
